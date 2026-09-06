@@ -8,15 +8,15 @@ import (
 	"syscall"
 
 	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
+	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/hashicorp/consul/api"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
 	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2"
 	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
-	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
-	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/ctxmanager"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 )
@@ -34,7 +34,7 @@ var (
 	shutdownHooks []func()
 )
 
-func init() {
+func RunService() {
 	ctxmanager.Register(baseproviders.Get())
 
 	consulPS := consul.NewLoggingPropertySource()
@@ -47,9 +47,6 @@ func init() {
 	consulURL = configloader.GetOrDefaultString("consul.url", "")
 	consulToken = configloader.GetOrDefaultString("consul.token", "")
 
-}
-
-func RunService() {
 	healthService, err := health.NewHealthService()
 	if err != nil {
 		logger.Error("Couldn't create healthService")
