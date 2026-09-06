@@ -28,6 +28,10 @@ func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = InitializeTenantManagerDefaultProperties(s, ctx)
+	if err != nil {
+		return err
+	}
 	err = InitializeDmpTenantActivatorDefaultProperties(s, ctx)
 	if err != nil {
 		return err
@@ -37,7 +41,7 @@ func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
 
 func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) error {
 	// 1. Core Cloud Infrastructure Settings
-	namespace := configloader.GetOrDefaultString("CLOUD_NAMESPACE", "")
+	namespace := configloader.GetOrDefaultString("NAMESPACE", "")
 	cloudPublicHost := configloader.GetOrDefaultString("CLOUD_PUBLIC_HOST", "")
 	cloudPort := configloader.GetOrDefaultString("CLOUD_API_PORT", "6443")
 	cloudProtocol := configloader.GetOrDefaultString("CLOUD_PROTOCOL", "https")
