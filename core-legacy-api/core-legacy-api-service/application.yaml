@@ -1,5 +1,6 @@
 microservice:
   name: core-legacy-api
+  namespace: core-dev
 
 namespace: ${NAMESPACE}
 
