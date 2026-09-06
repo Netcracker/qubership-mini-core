@@ -1,0 +1,12 @@
+microservice:
+  name: core-legacy-api
+  namespace: ${NAMESPACE}
+
+consul:
+  url: ${CONSUL_URL}
+  token: ${CONSUL_TOKEN}
+
+http:
+  server:
+    bind: ":8080"
+

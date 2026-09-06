@@ -1,0 +1,24 @@
+PAAS_PLATFORM: "KUBERNETES"
+IMAGE_REPOSITORY: '' # TO_BE_REPLACED
+# Which docker image tag should be used to deploy
+TAG: '' # TO_BE_REPLACED
+# The namespace it is going to be deployed
+NAMESPACE: '' # TO_BE_REPLACED 
+# Service Name.
+SERVICE_NAME: "core-legacy-api"
+# SSL secret name
+SSL_SECRET: "defaultsslcertificate"
+CLIENT_SECRET: "/etc/secret"
+GATEWAY_URL: "http://internal-gateway-service:8080"
+MEM_ARGS: "-Xms240m -Xmx240m"
+MONITORING_INSTALL: true
+
+ALLOWED_HEADERS: ''
+CLOUD_ADMIN_EMAIL: "TestTenantManagementGroup@netcracker.com"
+EMAIL_FROM: "no-reply@openshift.sdntest.netcracker"
+EMAIL_HOST: "iplanet.netcracker.com"
+EMAIL_PASSWORD: ''
+EMAIL_USER: ''
+
+HTTP_BUFFER_HEADER_MAX_SIZE: 10240
+

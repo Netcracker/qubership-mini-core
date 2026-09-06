@@ -1,0 +1,9 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: '{{ .Values.SERVICE_NAME }}.monitoring-config'
+data:
+  url.health: http://%(ip)s:8080/health
+  url.metrics: http://%(ip)s:8080/metrics
+  prometheus.url.metrics: http://%(ip)s:8080/prometheus
