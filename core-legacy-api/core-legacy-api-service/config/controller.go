@@ -2,8 +2,9 @@ package config
 
 import (
 	"context"
-	"core-legacy-api/model"
 	"strings"
+
+	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"

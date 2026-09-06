@@ -1,4 +1,4 @@
-module core-legacy-api
+module github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service
 
 go 1.26.4
 

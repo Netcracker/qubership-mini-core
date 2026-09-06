@@ -1,7 +1,7 @@
 package main
 
 import (
-	"core-legacy-api/lib"
+	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/lib"
 
 	fiberSec "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"

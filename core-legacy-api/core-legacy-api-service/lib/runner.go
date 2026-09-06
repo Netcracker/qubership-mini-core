@@ -2,11 +2,12 @@ package lib
 
 import (
 	"context"
-	"core-legacy-api/config"
 	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/hashicorp/consul/api"

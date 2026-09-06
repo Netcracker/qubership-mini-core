@@ -1,9 +1,10 @@
 package config
 
 import (
-	"core-legacy-api/model"
 	"strings"
 	"testing"
+
+	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/hashicorp/consul/api"
 	"github.com/stretchr/testify/assert"

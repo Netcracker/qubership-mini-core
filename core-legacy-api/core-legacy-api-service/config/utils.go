@@ -1,12 +1,13 @@
 package config
 
 import (
-	"core-legacy-api/model"
 	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"

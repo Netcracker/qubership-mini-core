@@ -1,14 +1,15 @@
 package config
 
 import (
-	config "core-legacy-api/config/mock-service"
-	"core-legacy-api/model"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	config "github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config/mock-service"
+	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
