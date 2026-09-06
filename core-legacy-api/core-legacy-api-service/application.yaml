@@ -1,6 +1,7 @@
 microservice:
   name: core-legacy-api
-  namespace: ${NAMESPACE}
+
+namespace: ${NAMESPACE}
 
 consul:
   url: ${CONSUL_URL}
