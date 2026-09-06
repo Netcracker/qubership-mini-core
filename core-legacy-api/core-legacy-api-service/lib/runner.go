@@ -43,7 +43,7 @@ func RunService() {
 	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {
 	})
 
-	namespace = configloader.GetOrDefaultString("microservice.namespace", "")
+	namespace = configloader.GetOrDefaultString("namespace", "")
 	consulURL = configloader.GetOrDefaultString("consul.url", "")
 	consulToken = configloader.GetOrDefaultString("consul.token", "")
 
