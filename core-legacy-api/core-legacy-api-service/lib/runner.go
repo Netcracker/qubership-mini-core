@@ -126,7 +126,7 @@ func GetConsulToken() (string, error) {
 		return "", fmt.Errorf("Parameter %s is required but could not be found and no default value was provided", tokenPathValue)
 	}
 	var tokenPath string
-	if s, ok := tokenPathValue.(string); !ok {
+	if s, ok := tokenPathValue.(string); ok {
 		tokenPath = s
 	} else {
 		tokenPath = fmt.Sprintf("%v", tokenPath)
