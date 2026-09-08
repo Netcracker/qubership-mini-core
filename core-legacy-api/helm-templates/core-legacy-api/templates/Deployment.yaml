@@ -30,15 +30,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: NAMESPACE
+            - name: MICROSERVICE_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: CONSUL_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: config-server-consul-token
-                  key: token
             - name: GATEWAY_URL
               value: '{{ .Values.GATEWAY_URL}}'
             - name: XNIO_IO_THREAD
@@ -99,6 +94,10 @@ spec:
                 readOnly: true
             -   name: '{{ .Values.SSL_SECRET }}'
                 mountPath: /tmp/cert/{{ .Values.SSL_SECRET }}
+            -   name: consul-token
+                mountPath: /var/run/secrets/consul-token
+                readOnly: true
+
           livenessProbe:
             httpGet:
               path: "/health"
@@ -131,3 +130,7 @@ spec:
         - name: '{{ .Values.SSL_SECRET }}'
           secret:
             secretName: '{{ .Values.SSL_SECRET }}'
+        - name: consul-token
+          secret:
+            secretName: config-server-consul-token
+            defaultMode: 292

@@ -2,9 +2,11 @@ package lib
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
@@ -28,9 +30,6 @@ var (
 		),
 	)
 	logger        = logging.GetLogger("Server")
-	namespace     string
-	consulURL     string
-	consulToken   string
 	shutdownHooks []func()
 )
 
@@ -43,9 +42,13 @@ func RunService() {
 	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {
 	})
 
-	namespace = configloader.GetOrDefaultString("namespace", "")
-	consulURL = configloader.GetOrDefaultString("consul.url", "")
-	consulToken = configloader.GetOrDefaultString("consul.token", "")
+	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
+	consulURL := configloader.GetOrDefaultString("consul.url", "")
+	consulToken, err := GetConsulToken()
+	if err != nil {
+		logger.Errorf("%s", err.Error())
+		return
+	}
 
 	healthService, err := health.NewHealthService()
 	if err != nil {
@@ -115,6 +118,24 @@ func RunService() {
 	registerShutdownHooks()
 
 	server.StartServer(app, "http.server.bind")
+}
+
+func GetConsulToken() (string, error) {
+	tokenPathValue := configloader.GetOrDefault("consul.token.path", nil)
+	if tokenPathValue == nil {
+		return "", fmt.Errorf("Parameter %s is required but could not be found and no default value was provided", tokenPathValue)
+	}
+	var tokenPath string
+	if s, ok := tokenPathValue.(string); !ok {
+		tokenPath = s
+	} else {
+		tokenPath = fmt.Sprintf("%v", tokenPath)
+	}
+	tokenBytes, err := os.ReadFile(tokenPath)
+	if err != nil {
+		return "", fmt.Errorf("Failed to read Consul token from file %s: %v. Consul is enabled but token file is not accessible.", tokenPath, err)
+	}
+	return strings.TrimSpace(string(tokenBytes)), nil
 }
 
 func registerShutdownHooks() {
