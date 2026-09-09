@@ -17,16 +17,11 @@ func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
 
 		return err
 	}
-	baselineProj := configloader.GetOrDefaultString("BASELINE_PROJ", "")
-	if strings.TrimSpace(baselineProj) == "" {
-		err := InitializeBaselineProperties(s, ctx)
-		if err != nil {
+	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
+	if strings.TrimSpace(baselineProj) != "" {
+		if err := InitializeBaselineProperties(s, ctx); err != nil {
 			return err
 		}
-	}
-	err = InitializeBaselineProperties(s, ctx)
-	if err != nil {
-		return err
 	}
 	err = InitializeTenantManagerDefaultProperties(s, ctx)
 	if err != nil {
@@ -41,13 +36,13 @@ func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
 
 func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) error {
 	// 1. Core Cloud Infrastructure Settings
-	namespace := configloader.GetOrDefaultString("NAMESPACE", "")
-	cloudPublicHost := configloader.GetOrDefaultString("CLOUD_PUBLIC_HOST", "")
-	cloudPort := configloader.GetOrDefaultString("CLOUD_API_PORT", "6443")
-	cloudProtocol := configloader.GetOrDefaultString("CLOUD_PROTOCOL", "https")
+	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
+	cloudPublicHost := configloader.GetOrDefaultString("cloud.public.host", "")
+	cloudPort := configloader.GetOrDefaultString("cloud.api.port", "6443")
+	cloudProtocol := configloader.GetOrDefaultString("cloud.protocol", "https")
 
-	cloudHost := configloader.GetOrDefaultString("CLOUD_API_HOST", cloudPublicHost)
-	cloudInternalHost := configloader.GetOrDefaultString("CLOUD_PRIVATE_HOST", "")
+	cloudHost := configloader.GetOrDefaultString("cloud.api.host", cloudPublicHost)
+	cloudInternalHost := configloader.GetOrDefaultString("cloud.private.host", "")
 	if strings.TrimSpace(cloudInternalHost) == "" {
 		cloudInternalHost = cloudPublicHost
 	}
@@ -57,13 +52,13 @@ func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) err
 	defaultPublicGateway := fmt.Sprintf("%s://public-gateway-%s.%s", cloudProtocol, namespace, cloudPublicHost)
 	defaultCloudServer := fmt.Sprintf("%s://%s:%s", cloudProtocol, cloudHost, cloudPort)
 
-	privateGatewayUrl := configloader.GetOrDefaultString("PRIVATE_GATEWAY_URL", defaultPrivateGateway)
-	publicGatewayUrl := configloader.GetOrDefaultString("PUBLIC_GATEWAY_URL", defaultPublicGateway)
-	cloudServerUrl := configloader.GetOrDefaultString("CLOUD_SERVER_URL", defaultCloudServer)
+	privateGatewayUrl := configloader.GetOrDefaultString("private.gateway.url", defaultPrivateGateway)
+	publicGatewayUrl := configloader.GetOrDefaultString("public.gateway.url", defaultPublicGateway)
+	cloudServerUrl := configloader.GetOrDefaultString("cloud.server.url", defaultCloudServer)
 
 	// 3. Mail & Authentication Defaults
-	emailUser := configloader.GetOrDefaultString("EMAIL_USER", "")
-	emailPassword := configloader.GetOrDefaultString("EMAIL_PASSWORD", "")
+	emailUser := configloader.GetOrDefaultString("email.user", "")
+	emailPassword := configloader.GetOrDefaultString("email.password", "")
 	emailAuth := true
 
 	if strings.TrimSpace(emailUser) == "" {
@@ -90,7 +85,7 @@ func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) err
 		"apigateway.url-https":               "https://internal-gateway-service:8443",
 
 		"error.page.customerSpecifier": "default",
-		"http.buffer.header.max.size":  configloader.GetOrDefaultString("HTTP_BUFFER_HEADER_MAX_SIZE", "10240"),
+		"http.buffer.header.max.size":  configloader.GetOrDefaultString("http.buffer.header.max.size", "10240"),
 
 		"idp.authServersCount":     "",
 		"idp.authServerUrl":        "",
@@ -108,10 +103,10 @@ func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) err
 		"keycloak.gateway.route":        "",
 		"keycloak.sslRequiredType":      "",
 
-		"mail.cloudAdminEmail": configloader.GetOrDefaultString("CLOUD_ADMIN_EMAIL", ""),
-		"mail.fromEmail":       configloader.GetOrDefaultString("EMAIL_FROM", ""),
+		"mail.cloudAdminEmail": configloader.GetOrDefaultString("cloud.admin.email", ""),
+		"mail.fromEmail":       configloader.GetOrDefaultString("email.from", ""),
 		"mail.server.auth":     strconv.FormatBool(emailAuth),
-		"mail.server.host":     configloader.GetOrDefaultString("EMAIL_HOST", ""),
+		"mail.server.host":     configloader.GetOrDefaultString("email.host", ""),
 		"mail.server.password": emailPassword,
 		"mail.server.user":     emailUser,
 
@@ -120,7 +115,7 @@ func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) err
 		"openshift.server.url":          cloudServerUrl,
 	}
 
-	if allowedHeaders := configloader.GetOrDefaultString("ALLOWED_HEADERS", ""); strings.TrimSpace(allowedHeaders) != "" {
+	if allowedHeaders := configloader.GetOrDefaultString("allowed.headers", ""); strings.TrimSpace(allowedHeaders) != "" {
 		properties["headers.allowed"] = allowedHeaders
 	}
 
@@ -128,7 +123,7 @@ func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) err
 }
 
 func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
-	baselineProj := configloader.GetOrDefaultString("BASELINE_PROJ", "")
+	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
 
 	if strings.TrimSpace(baselineProj) == "" {
 		return nil
@@ -223,12 +218,12 @@ func getBaselineProperties(
 
 func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Context) error {
 	INSTALLATION_NAME_RULES := "[{\"namespace\":null,\"microserviceName\":null,\"tenantId\":null,\"dbClassifier\":null, \"installationName\" : \"default\"}]"
-	cloudPort := configloader.GetOrDefaultString("CLOUD_API_PORT", "6443")
-	cloudProtocol := configloader.GetOrDefaultString("CLOUD_PROTOCOL", "https")
-	cloudPublicHost := configloader.GetOrDefaultString("CLOUD_PUBLIC_HOST", "")
-	cloudHost := configloader.GetOrDefaultString("CLOUD_API_HOST", cloudPublicHost)
+	cloudPort := configloader.GetOrDefaultString("cloud.api.port", "6443")
+	cloudProtocol := configloader.GetOrDefaultString("cloud.protocol", "https")
+	cloudPublicHost := configloader.GetOrDefaultString("cloud.public.host", "")
+	cloudHost := configloader.GetOrDefaultString("cloud.api.host", cloudPublicHost)
 	defaultCloudServer := fmt.Sprintf("%s://%s:%s", cloudProtocol, cloudHost, cloudPort)
-	cloudServerUrl := configloader.GetOrDefaultString("CLOUD_SERVER_URL", defaultCloudServer)
+	cloudServerUrl := configloader.GetOrDefaultString("cloud.server.url", defaultCloudServer)
 
 	properties := map[string]string{
 		"installationNameRules":                       INSTALLATION_NAME_RULES,
