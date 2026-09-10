@@ -90,7 +90,11 @@ func RunService() {
 		return
 	}
 	configController := config.NewConfigPropertiesController(consulService)
-
+	// swagger
+	app.Get("/swagger-ui/swagger.json", func(ctx *fiber.Ctx) error {
+		ctx.Set("Content-Type", "application/json")
+		return ctx.Status(http.StatusOK).SendString(docs.SwaggerInfo.ReadDoc())
+	})
 	app.Get("/applications", configController.GetApplicationsAndProfiles)
 	app.Get("/:label/:name-:profiles.json", configController.FindOneJSON)
 	app.Get("/:label/:name-:profiles.properties", configController.FindOneProperties)
@@ -107,11 +111,6 @@ func RunService() {
 	app.Post("/:application/:profile", configController.AddProperties)
 	app.Put("/:application/:profile", configController.AddProperties)
 	app.Post("/:application/:profile/properties-delete", configController.DeleteProperties)
-	// swagger
-	app.Get("/swagger-ui/swagger.json", func(ctx *fiber.Ctx) error {
-		ctx.Set("Content-Type", "application/json")
-		return ctx.Status(http.StatusOK).SendString(docs.SwaggerInfo.ReadDoc())
-	})
 	shutdownHooks = append(shutdownHooks, func() {
 		logger.Info("Shutdown fiber server")
 		if err := app.Shutdown(); err != nil {
