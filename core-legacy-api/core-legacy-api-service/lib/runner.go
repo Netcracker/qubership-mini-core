@@ -21,6 +21,8 @@ import (
 	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/ctxmanager"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
+
+	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/docs"
 )
 
 var (
@@ -105,7 +107,11 @@ func RunService() {
 	app.Post("/:application/:profile", configController.AddProperties)
 	app.Put("/:application/:profile", configController.AddProperties)
 	app.Post("/:application/:profile/properties-delete", configController.DeleteProperties)
-
+	// swagger
+	app.Get("/swagger-ui/swagger.json", func(ctx *fiber.Ctx) error {
+		ctx.Set("Content-Type", "application/json")
+		return ctx.Status(http.StatusOK).SendString(docs.SwaggerInfo.ReadDoc())
+	})
 	shutdownHooks = append(shutdownHooks, func() {
 		logger.Info("Shutdown fiber server")
 		if err := app.Shutdown(); err != nil {

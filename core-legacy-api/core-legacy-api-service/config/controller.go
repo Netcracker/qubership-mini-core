@@ -30,6 +30,13 @@ func NewConfigPropertiesController(configService ConfigService) *ConfigControlle
 	return &ConfigController{configService}
 }
 
+// GetApplicationsAndProfiles godoc
+// @Summary Get applications list
+// @Description Returns list of configured applications with their profiles
+// @Tags Config Properties
+// @Produce application/json
+// @Success 200 {array} model.ApplicationWithProfiles "Returned successfully list of configured applications with their profiles"
+// @Router /applications [get]
 func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 	logger.InfoC(ctx, "Getting applications")
@@ -46,6 +53,15 @@ func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
+// FindOne godoc
+// @Tags Config Properties
+// @Param name path string true "name"
+// @Param profiles path string true "profiles"
+// @Param label path string true "label"
+// @Produce application/json
+// @Success 200 {object} model.Environment
+// @Router /{name}/{profiles} [get]
+// @Router /{name}/{profiles}/{label} [get]
 func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
@@ -70,6 +86,16 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(environment)
 }
 
+// FindOneJSON godoc
+// @Tags Config Properties
+// @Param name path string true "name"
+// @Param profiles path string true "profiles"
+// @Param label path string true "label"
+// @Param resolvePlaceholders query boolean false " " default(true)
+// @Produce text/plain
+// @Success 200 {string} string
+// @Router /{name}-{profiles}.json [get]
+// @Router /{label}/{name}-{profiles}.json [get]
 func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
@@ -96,6 +122,16 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(result)
 }
 
+// FindOneProperties godoc
+// @Tags Config Properties
+// @Param name path string true "application"
+// @Param profiles path string true "profiles"
+// @Param label path string true "label"
+// @Param resolvePlaceholders query boolean false " " default(true)
+// @Produce text/plain
+// @Success 200 {string} string
+// @Router /{name}-{profiles}.properties [get]
+// @Router /{label}/{name}-{profiles}.properties [get]
 func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
@@ -123,6 +159,19 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).SendString(buildPropertiesText(properties))
 }
 
+// FindOneYaml godoc
+// @Description Returns YAML formatted configuration for application and profiles
+// @Tags Config Properties
+// @Param name path string true "application"
+// @Param profiles path string true "profiles"
+// @Param label path string true "label"
+// @Param resolvePlaceholders query boolean false " " default(true)
+// @Produce text/plain
+// @Success 200 {string} string
+// @Router /{name}-{profiles}.yml [get]
+// @Router /{label}/{name}-{profiles}.yml [get]
+// @Router /{name}-{profiles}.yaml [get]
+// @Router /{label}/{name}-{profiles}.yaml [get]
 func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
@@ -187,6 +236,18 @@ func (ctrl *ConfigController) loadMergedProperties(
 	return merged, nil
 }
 
+// AddProperties godoc
+// @Summary Add new property
+// @Description Adds new property for defined application and profile. If property is already existed then replace it with new one.
+// @Tags Config Properties
+// @Param application path string true "application"
+// @Param profile path string true "profile"
+// @Accept application/json
+// @Param properties body object true "JSON mapping key string to value string"
+// @Success 201 {string} string
+// @Failure 400 {string} string
+// @Router /{application}/{profile} [post]
+// @Router /{application}/{profile} [put]
 func (ctrl *ConfigController) AddProperties(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
@@ -210,6 +271,17 @@ func (ctrl *ConfigController) AddProperties(c *fiber.Ctx) error {
 
 }
 
+// DeleteProperties godoc
+// @Summary Delete properties
+// @Description Deletes properties for defined application and profile. If properties was not specified would delete all of them.
+// @Tags Config Properties
+// @Param application path string true "application"
+// @Param profile path string true "profile"
+// @Accept application/json
+// @Param properties body []string false "JSON list with names of properties"
+// @Success 200 "Properties successfully deleted"
+// @Failure 400 {string} string "Bad Request"
+// @Router /{application}/{profile}/properties-delete [post]
 func (ctrl *ConfigController) DeleteProperties(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 

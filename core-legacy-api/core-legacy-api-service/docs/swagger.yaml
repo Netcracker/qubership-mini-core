@@ -1,0 +1,456 @@
+definitions:
+  model.ApplicationWithProfiles:
+    properties:
+      name:
+        type: string
+      profiles:
+        items:
+          type: string
+        type: array
+    type: object
+  model.Environment:
+    properties:
+      label:
+        type: string
+      name:
+        type: string
+      profiles:
+        items:
+          type: string
+        type: array
+      propertySources:
+        items:
+          $ref: '#/definitions/model.PropertySource'
+        type: array
+      state:
+        type: string
+      version:
+        type: string
+    type: object
+  model.PropertySource:
+    properties:
+      name:
+        type: string
+      source:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+info:
+  contact: {}
+  description: |-
+    This is the API documentation for the config-server. With the Config
+    Server you have a central place to manage external properties for applications
+    across all environments.
+  title: config-server API
+  version: 1.0.0
+paths:
+  /{application}/{profile}:
+    post:
+      consumes:
+      - application/json
+      description: Adds new property for defined application and profile. If property
+        is already existed then replace it with new one.
+      parameters:
+      - description: application
+        in: path
+        name: application
+        required: true
+        type: string
+      - description: profile
+        in: path
+        name: profile
+        required: true
+        type: string
+      - description: JSON mapping key string to value string
+        in: body
+        name: properties
+        required: true
+        schema:
+          type: object
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Add new property
+      tags:
+      - Config Properties
+    put:
+      consumes:
+      - application/json
+      description: Adds new property for defined application and profile. If property
+        is already existed then replace it with new one.
+      parameters:
+      - description: application
+        in: path
+        name: application
+        required: true
+        type: string
+      - description: profile
+        in: path
+        name: profile
+        required: true
+        type: string
+      - description: JSON mapping key string to value string
+        in: body
+        name: properties
+        required: true
+        schema:
+          type: object
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Add new property
+      tags:
+      - Config Properties
+  /{application}/{profile}/properties-delete:
+    post:
+      consumes:
+      - application/json
+      description: Deletes properties for defined application and profile. If properties
+        was not specified would delete all of them.
+      parameters:
+      - description: application
+        in: path
+        name: application
+        required: true
+        type: string
+      - description: profile
+        in: path
+        name: profile
+        required: true
+        type: string
+      - description: JSON list with names of properties
+        in: body
+        name: properties
+        schema:
+          items:
+            type: string
+          type: array
+      responses:
+        "200":
+          description: Properties successfully deleted
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Delete properties
+      tags:
+      - Config Properties
+  /{label}/{name}-{profiles}.json:
+    get:
+      parameters:
+      - description: name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - description: label
+        in: path
+        name: label
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{label}/{name}-{profiles}.properties:
+    get:
+      parameters:
+      - description: application
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - description: label
+        in: path
+        name: label
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{label}/{name}-{profiles}.yaml:
+    get:
+      description: Returns YAML formatted configuration for application and profiles
+      parameters:
+      - description: application
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - description: label
+        in: path
+        name: label
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{label}/{name}-{profiles}.yml:
+    get:
+      description: Returns YAML formatted configuration for application and profiles
+      parameters:
+      - description: application
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - description: label
+        in: path
+        name: label
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{name}-{profiles}.json:
+    get:
+      parameters:
+      - description: name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{name}-{profiles}.properties:
+    get:
+      parameters:
+      - description: application
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{name}-{profiles}.yaml:
+    get:
+      description: Returns YAML formatted configuration for application and profiles
+      parameters:
+      - description: application
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{name}-{profiles}.yml:
+    get:
+      description: Returns YAML formatted configuration for application and profiles
+      parameters:
+      - description: application
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - default: true
+        description: ' '
+        in: query
+        name: resolvePlaceholders
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Config Properties
+  /{name}/{profiles}:
+    get:
+      parameters:
+      - description: name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Environment'
+      tags:
+      - Config Properties
+  /{name}/{profiles}/{label}:
+    get:
+      parameters:
+      - description: name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: profiles
+        in: path
+        name: profiles
+        required: true
+        type: string
+      - description: label
+        in: path
+        name: label
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Environment'
+      tags:
+      - Config Properties
+  /applications:
+    get:
+      description: Returns list of configured applications with their profiles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returned successfully list of configured applications with
+            their profiles
+          schema:
+            items:
+              $ref: '#/definitions/model.ApplicationWithProfiles'
+            type: array
+      summary: Get applications list
+      tags:
+      - Config Properties
+swagger: "2.0"
