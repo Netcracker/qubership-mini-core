@@ -1,3 +1,9 @@
+// @title config-server API
+// @version     1.0.0
+// @description This is the API documentation for the config-server. With the Config
+// @description Server you have a central place to manage external properties for applications
+// @description across all environments.
+//
 package lib
 
 import (
