@@ -1,0 +1,16 @@
+{{ if .Values.MONITORING_ENABLED }}
+---
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: java-process-dashboard
+  labels:
+    app: grafana
+    app.kubernetes.io/part-of: 'Cloud-Core'
+    app.kubernetes.io/managed-by: 'saasDeployer'
+    app.kubernetes.io/processed-by-operator: 'grafana-operator'
+    deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
+spec:
+  name: java-process-dashboard.json
+  gzipJson: {{ .Files.Get "dashboards/java-process-dashboard.json.gz" | b64enc | quote }}
+{{ end }}

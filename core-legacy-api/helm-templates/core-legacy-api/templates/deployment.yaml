@@ -1,0 +1,259 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: '{{ .Values.SERVICE_NAME }}'
+  labels:
+    name: '{{ .Values.SERVICE_NAME }}'
+    app.kubernetes.io/name: '{{ .Values.SERVICE_NAME }}'
+    app.kubernetes.io/instance: '{{ cat .Values.SERVICE_NAME "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}'
+    app.kubernetes.io/version: '{{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}'
+    app.kubernetes.io/component: 'backend'
+    app.kubernetes.io/part-of: 'Cloud-Core'
+    app.kubernetes.io/managed-by: 'saasDeployer'
+    app.kubernetes.io/technology: 'go'
+    deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
+  annotations:
+    netcracker.cloud/start.stage: '0'
+spec:
+  replicas: {{ .Values.REPLICAS | default 1 }}
+  revisionHistoryLimit: 3
+  strategy:
+    {{- if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "recreate" }}
+    type: Recreate
+    {{- else if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "best_effort_controlled_rollout" }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 80%
+    {{- else if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "ramped_slow_rollout" }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    {{- else if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "custom_rollout" }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.DEPLOYMENT_STRATEGY_MAXSURGE | default "25%" }}
+      maxUnavailable: {{ .Values.DEPLOYMENT_STRATEGY_MAXUNAVAILABLE | default "25%" }}
+    {{- else }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        name: '{{ .Values.SERVICE_NAME }}'
+        app.kubernetes.io/name: '{{ .Values.SERVICE_NAME }}'
+        app.kubernetes.io/instance: '{{ cat .Values.SERVICE_NAME "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}'
+        app.kubernetes.io/version: '{{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}'
+        app.kubernetes.io/component: 'backend'
+        app.kubernetes.io/part-of: 'Cloud-Core'
+        app.kubernetes.io/managed-by: 'saasDeployer'
+        app.kubernetes.io/technology: 'go'
+    spec:
+      serviceAccountName: '{{ .Values.SERVICE_NAME }}'
+      volumes:
+        - name: client-credentials
+          secret:
+            secretName: '{{ .Values.SERVICE_NAME }}-client-credentials'
+{{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+        - name: tmp
+          emptyDir: { }
+        - name: env
+          emptyDir: { }
+        - name: ncdiag
+          emptyDir: { }
+        - name: nss
+          emptyDir: { }
+{{ end }}
+        - name: projected-tokens
+          projected:
+            defaultMode: 292
+            sources:
+              - serviceAccountToken:
+                  path: netcracker/token
+                  audience: netcracker
+                  expirationSeconds: 600
+        - name: topology
+          configMap:
+            name: topology
+{{ if .Values.CONSUL_ENABLED }}
+        - name: consul-token
+          secret:
+            secretName: config-server-consul-token
+            defaultMode: 288
+{{ end }}
+      containers:
+        - name: '{{ .Values.SERVICE_NAME }}'
+          image: '{{ .Values.IMAGE_REPOSITORY }}:{{ .Values.TAG }}'
+          volumeMounts:
+            - name: client-credentials
+              mountPath: '/etc/secret'
+              readOnly: true
+{{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+            - name: tmp
+              mountPath: /tmp
+            - name: env
+              mountPath: /etc/env
+            - name: ncdiag
+              mountPath: /app/ncdiag
+            - name: nss
+              mountPath: /app/nss
+{{ end }}
+            - name: projected-tokens
+              mountPath: /var/run/secrets/tokens
+              readOnly: true
+            - name: topology
+              mountPath: /etc/topology
+              readOnly: true
+{{ if .Values.CONSUL_ENABLED }}
+            - name: consul-token
+              mountPath: /var/run/secrets/consul-token
+              readOnly: true
+{{ end }}
+          args:
+            - /app/go-config-server
+          ports:
+            - name: web
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: KUBERNETES_M2M_ENABLED
+              value: '{{ .Values.KUBERNETES_M2M_ENABLED }}'
+            - name: CERTIFICATE_BUNDLE_{{ .Values.SSL_SECRET }}_MD5SUM
+              value: '{{ .Values.CERTIFICATE_BUNDLE_MD5SUM }}'
+            - name: MICROSERVICE_NAME
+              value: '{{ .Values.SERVICE_NAME }}'
+            - name: CLOUD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MICROSERVICE_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: TRACING_ENABLED
+              value: '{{ .Values.TRACING_ENABLED }}'
+            - name: TRACING_HOST
+              value: '{{ .Values.TRACING_HOST }}'
+            - name: TRACING_SAMPLER_PROBABILISTIC
+              value: '{{ .Values.TRACING_SAMPLER_PROBABILISTIC }}'
+            - name: LOG_LEVEL
+              value: '{{ .Values.LOG_LEVEL }}'
+            - name: ALLOWED_HEADERS
+              value: '{{ .Values.ALLOWED_HEADERS }}'
+            - name: API_DBAAS_ADDRESS
+              value: '{{ .Values.API_DBAAS_ADDRESS }}'
+            - name: CLOUD_PUBLIC_HOST
+              value: '{{ .Values.CLOUD_PUBLIC_HOST }}'
+            - name: CLOUD_PRIVATE_HOST
+              value: '{{ .Values.CLOUD_PRIVATE_HOST }}'
+            - name: EMAIL_HOST
+              value: '{{ .Values.EMAIL_HOST }}'
+            - name: EMAIL_USER
+              value: '{{ .Values.EMAIL_USER }}'
+            - name: EMAIL_PASSWORD
+              value: '{{ .Values.EMAIL_PASSWORD }}'
+            - name: EMAIL_FROM
+              value: '{{ .Values.EMAIL_FROM }}'
+            - name: CLOUD_ADMIN_EMAIL
+              value: '{{ .Values.CLOUD_ADMIN_EMAIL }}'
+            - name: PRIVATE_GATEWAY_URL
+              value: '{{ .Values.PRIVATE_GATEWAY_URL }}'
+            - name: PUBLIC_GATEWAY_URL
+              value: '{{ .Values.PUBLIC_GATEWAY_URL }}'
+            - name: CLOUD_API_HOST
+              value: '{{ .Values.CLOUD_API_HOST }}'
+            - name: CLOUD_API_PORT
+              value: '{{ .Values.CLOUD_API_PORT }}'
+            - name: CLOUD_PROTOCOL
+              value: '{{ .Values.CLOUD_PROTOCOL }}'
+            - name: VAULT_INTEGRATION
+              value: '{{ .Values.VAULT_INTEGRATION }}'
+            - name: NC_DIAGNOSTIC_MODE
+              value: '{{ .Values.NC_DIAGNOSTIC_MODE }}'
+            - name: NC_DIAGNOSTIC_AGENT_SERVICE
+              value: '{{ .Values.NC_DIAGNOSTIC_AGENT_SERVICE }}'
+            - name: BASELINE_PROJ
+              value: '{{ .Values.BASELINE_PROJ }}'
+            - name: CONSUL_ENABLED
+              value: '{{ .Values.CONSUL_ENABLED | default false }}'
+                {{ if .Values.CONSUL_ENABLED }}
+            - name: CONSUL_URL
+              value: '{{ .Values.CONSUL_URL }}'
+                {{ end }}
+            - name: HTTP_BUFFER_HEADER_MAX_SIZE
+              value: '{{ .Values.HTTP_BUFFER_HEADER_MAX_SIZE }}'
+          resources:
+            requests:
+              cpu: '{{ .Values.CPU_REQUEST }}'
+              memory: '{{ .Values.MEMORY_REQUEST }}'
+            limits:
+              cpu: '{{ .Values.CPU_LIMIT }}'
+              memory: '{{ .Values.MEMORY_LIMIT }}'
+          livenessProbe:
+            httpGet:
+              path: /health
+              port:  web
+              scheme: HTTP
+            initialDelaySeconds: {{ ternary 3 .Values.PROBE_LIVENESS_INITIAL_DELAY_SECONDS (lt (int .Values.PROBE_LIVENESS_INITIAL_DELAY_SECONDS) 0) }}
+            timeoutSeconds: {{ ternary 5 .Values.PROBE_LIVENESS_TIMEOUT_SECONDS (lt (int .Values.PROBE_LIVENESS_TIMEOUT_SECONDS) 0) }}
+            periodSeconds: {{ ternary 10 .Values.PROBE_LIVENESS_PERIOD_SECONDS (lt (int .Values.PROBE_LIVENESS_PERIOD_SECONDS) 0) }}
+            failureThreshold: {{ ternary 3 .Values.PROBE_LIVENESS_FAILURE_THRESHOLD (lt (int .Values.PROBE_LIVENESS_FAILURE_THRESHOLD) 0) }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: web
+              scheme: HTTP
+            initialDelaySeconds: {{ ternary 3 .Values.PROBE_READINESS_INITIAL_DELAY_SECONDS (lt (int .Values.PROBE_READINESS_INITIAL_DELAY_SECONDS) 0) }}
+            timeoutSeconds: {{ ternary 5 .Values.PROBE_READINESS_TIMEOUT_SECONDS (lt (int .Values.PROBE_READINESS_TIMEOUT_SECONDS) 0) }}
+            periodSeconds: {{ ternary 10 .Values.PROBE_READINESS_PERIOD_SECONDS (lt (int .Values.PROBE_READINESS_PERIOD_SECONDS) 0) }}
+            successThreshold: {{ ternary 1 .Values.PROBE_READINESS_SUCCESS_THRESHOLD (lt (int .Values.PROBE_READINESS_SUCCESS_THRESHOLD) 0) }}
+            failureThreshold: {{ ternary 20 .Values.PROBE_READINESS_FAILURE_THRESHOLD (lt (int .Values.PROBE_READINESS_FAILURE_THRESHOLD) 0) }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port:  web
+              scheme:  HTTP
+            initialDelaySeconds: {{ ternary 3 .Values.PROBE_STARTUP_INITIAL_DELAY_SECONDS (lt (int .Values.PROBE_STARTUP_INITIAL_DELAY_SECONDS) 0) }}
+            timeoutSeconds: {{ ternary 5 .Values.PROBE_STARTUP_TIMEOUT_SECONDS (lt (int .Values.PROBE_STARTUP_TIMEOUT_SECONDS) 0) }}
+            periodSeconds: {{ ternary 3 .Values.PROBE_STARTUP_PERIOD_SECONDS (lt (int .Values.PROBE_STARTUP_PERIOD_SECONDS) 0) }}
+            failureThreshold: {{ ternary 20 .Values.PROBE_STARTUP_FAILURE_THRESHOLD (lt (int .Values.PROBE_STARTUP_FAILURE_THRESHOLD) 0) }}
+
+          securityContext:
+{{ if eq .Values.PAAS_PLATFORM "KUBERNETES" }}
+            runAsUser: 10001
+            runAsGroup: 10001
+{{ end }}
+            readOnlyRootFilesystem: {{ .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      topologySpreadConstraints:
+{{- if .Values.CLOUD_TOPOLOGIES }}
+{{- range $v := .Values.CLOUD_TOPOLOGIES }}
+        - topologyKey: {{ $v.topologyKey }}
+          maxSkew: {{ $v.maxSkew | default 1 }}
+          whenUnsatisfiable: {{ $v.whenUnsatisfiable | default "ScheduleAnyway" }}
+          labelSelector:
+            matchLabels:
+              name: "{{ $.Values.SERVICE_NAME }}"
+{{- end }}
+{{- else }}
+        - maxSkew: 1
+          topologyKey: "{{ .Values.CLOUD_TOPOLOGY_KEY }}"
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              name: "{{ .Values.SERVICE_NAME }}"
+{{- end }}
+  selector:
+    matchLabels:
+      name: '{{ .Values.SERVICE_NAME }}'
