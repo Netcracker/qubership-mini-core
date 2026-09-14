@@ -3,7 +3,6 @@
 // @description This is the API documentation for the config-server. With the Config
 // @description Server you have a central place to manage external properties for applications
 // @description across all environments.
-//
 package lib
 
 import (
@@ -66,6 +65,7 @@ func RunService() {
 
 	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
 		WithHealth("/health", healthService).
+		WithPrometheus("/prometheus").
 		Process()
 	if err != nil {
 		logger.Errorf("Error while create app because: %s", err.Error())
