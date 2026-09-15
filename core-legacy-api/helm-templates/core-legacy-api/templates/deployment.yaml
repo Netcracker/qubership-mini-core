@@ -62,13 +62,14 @@ spec:
 {{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
         - name: tmp
           emptyDir: { }
-        - name: env
+        - name: sslcerts
           emptyDir: { }
-        - name: ncdiag
-          emptyDir: { }
-        - name: nss
+        - name: cacerts
           emptyDir: { }
 {{ end }}
+        - name: "{{ .Values.SSL_SECRET }}"
+          secret:
+            secretName: "{{ .Values.SSL_SECRET }}"
         - name: projected-tokens
           projected:
             defaultMode: 292
@@ -96,13 +97,14 @@ spec:
 {{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
             - name: tmp
               mountPath: /tmp
-            - name: env
-              mountPath: /etc/env
-            - name: ncdiag
-              mountPath: /app/ncdiag
-            - name: nss
-              mountPath: /app/nss
+            - name: sslcerts
+              mountPath: /etc/ssl/certs
+            - name: cacerts
+              mountPath: /usr/local/share/ca-certificates
 {{ end }}
+            - name: "{{ .Values.SSL_SECRET }}"
+              mountPath: "/tmp/cert/{{ .Values.SSL_SECRET }}"
+              readOnly: true
             - name: projected-tokens
               mountPath: /var/run/secrets/tokens
               readOnly: true
@@ -115,7 +117,7 @@ spec:
               readOnly: true
 {{ end }}
           args:
-            - /app/go-config-server
+            - /app/core-legacy-api
           ports:
             - name: web
               containerPort: 8080
