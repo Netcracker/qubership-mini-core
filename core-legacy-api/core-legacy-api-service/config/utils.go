@@ -2,12 +2,15 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
@@ -377,4 +380,12 @@ func forceSingleQuotes(node *yaml.Node) {
 	for _, child := range node.Content {
 		forceSingleQuotes(child)
 	}
+}
+func GetFiberParam(fiberCtx *fiber.Ctx, paramName string) string {
+	paramValue := fiberCtx.Params(paramName)
+	unescapedStr, err := url.QueryUnescape(paramValue)
+	if err != nil {
+		return utils.CopyString(paramValue)
+	}
+	return utils.CopyString(unescapedStr)
 }

@@ -38,12 +38,6 @@ definitions:
     type: object
 info:
   contact: {}
-  description: |-
-    This is the API documentation for the config-server. With the Config
-    Server you have a central place to manage external properties for applications
-    across all environments.
-  title: config-server API
-  version: 1.0.0
 paths:
   /{application}/{profile}:
     post:
@@ -76,7 +70,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            type: string
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Add new property
       tags:
       - Config Properties
@@ -110,7 +112,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            type: string
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Add new property
       tags:
       - Config Properties
@@ -144,7 +154,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            type: string
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Delete properties
       tags:
       - Config Properties
@@ -178,6 +196,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{label}/{name}-{profiles}.properties:
@@ -210,6 +240,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{label}/{name}-{profiles}.yaml:
@@ -243,6 +285,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{label}/{name}-{profiles}.yml:
@@ -276,6 +330,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{name}-{profiles}.json:
@@ -303,6 +369,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{name}-{profiles}.properties:
@@ -330,6 +408,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{name}-{profiles}.yaml:
@@ -358,6 +448,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{name}-{profiles}.yml:
@@ -386,6 +488,18 @@ paths:
           description: OK
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{name}/{profiles}:
@@ -408,6 +522,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/model.Environment'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{name}/{profiles}/{label}:
@@ -435,6 +555,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/model.Environment'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /applications:
@@ -450,6 +576,12 @@ paths:
             items:
               $ref: '#/definitions/model.ApplicationWithProfiles'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Get applications list
       tags:
       - Config Properties
