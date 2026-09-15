@@ -217,7 +217,7 @@ func getBaselineProperties(
 }
 
 func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Context) error {
-	INSTALLATION_NAME_RULES := "[{\"namespace\":null,\"microserviceName\":null,\"tenantId\":null,\"dbClassifier\":null, \"installationName\" : \"default\"}]"
+	InstallationNameRules := "[{\"namespace\":null,\"microserviceName\":null,\"tenantId\":null,\"dbClassifier\":null, \"installationName\" : \"default\"}]"
 	cloudPort := configloader.GetOrDefaultString("cloud.api.port", "6443")
 	cloudProtocol := configloader.GetOrDefaultString("cloud.protocol", "https")
 	cloudPublicHost := configloader.GetOrDefaultString("cloud.public.host", "")
@@ -226,7 +226,7 @@ func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Conte
 	cloudServerUrl := configloader.GetOrDefaultString("cloud.server.url", defaultCloudServer)
 
 	properties := map[string]string{
-		"installationNameRules":                       INSTALLATION_NAME_RULES,
+		"installationNameRules":                       InstallationNameRules,
 		"openshift.server.url":                        cloudServerUrl,
 		"tenant.registration.success_template":        "Dear %s %s your request is in progress.<br> We will send you an email all information after request approval.<br> Thank you.",
 		"tenant.shoppingFrontend.templateName":        "qubership-cloud-shopping-frontend",
