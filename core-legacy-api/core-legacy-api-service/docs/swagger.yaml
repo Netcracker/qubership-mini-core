@@ -38,6 +38,12 @@ definitions:
     type: object
 info:
   contact: {}
+  description: |-
+    This is the API documentation for the config-server. With the Config
+    Server you have a central place to manage external properties for applications
+    across all environments.
+  title: config-server API
+  version: 1.0.0
 paths:
   /{application}/{profile}:
     post:
