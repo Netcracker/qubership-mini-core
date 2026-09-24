@@ -2,10 +2,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: '{{ .Values.SERVICE_NAME }}'
+  name: 'config-server'
   labels:
-    name: '{{ .Values.SERVICE_NAME }}'
-    app.kubernetes.io/name: '{{ .Values.SERVICE_NAME }}'
+    name: 'config-server'
+    app.kubernetes.io/name: 'config-server'
     app.kubernetes.io/part-of: 'Cloud-Core'
     app.kubernetes.io/managed-by: 'saasDeployer'
     deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
