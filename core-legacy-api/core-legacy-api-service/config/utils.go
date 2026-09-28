@@ -244,59 +244,68 @@ func resolveProperties(properties map[string]model.ConfigProperty) error {
 	return nil
 }
 
+// Compile once; matches ${key} and ${key:default}.
+var placeholderRe = regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
+
 func resolvePropertyValue(value string, properties map[string]model.ConfigProperty, resolving map[string]bool) (string, error) {
 	if resolving == nil {
 		// Track properties being resolved to detect circular references.
 		resolving = make(map[string]bool)
 	}
 
-	// Match ${key} and ${key:default} placeholders.
-	re := regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
+	matches := placeholderRe.FindAllStringSubmatchIndex(value, -1)
+	if matches == nil {
+		return value, nil
+	}
 
-	for {
-		// Find the next placeholder.
-		match := re.FindStringSubmatchIndex(value)
-		if match == nil {
-			return value, nil
-		}
+	var sb strings.Builder
+	last := 0
 
-		// Extract the property key.
-		key := value[match[2]:match[3]]
-		replacement, exists := properties[key]
+	for _, m := range matches {
+		// Copy the text before this placeholder.
+		sb.WriteString(value[last:m[0]])
+		last = m[1]
 
-		if !exists {
-			if match[4] == -1 {
-				// Keep unresolved placeholders unchanged.
-				return value, nil
+		key := value[m[2]:m[3]]
+		hasDefault := m[4] != -1
+
+		prop, exists := properties[key]
+
+		var raw string
+		switch {
+		case exists:
+			if resolving[key] {
+				return "", fmt.Errorf("circular property reference detected: %s", key)
 			}
-
-			// Use the default value when the property is missing.
-			replacement.Value = value[match[4]:match[5]]
-		} else if resolving[key] {
-			// Prevent infinite recursion from circular references.
-			return "", fmt.Errorf("circular property reference detected: %s", key)
+			raw = prop.Value
+		case hasDefault:
+			raw = value[m[4]:m[5]]
+		default:
+			// Unresolved and no default: keep the placeholder as-is and move on.
+			sb.WriteString(value[m[0]:m[1]])
+			continue
 		}
 
-		// Mark the property as being resolved.
-		resolving[key] = true
+		// Only properties (not inline defaults) can participate in a cycle.
+		if exists {
+			resolving[key] = true
+		}
 
-		// Resolve nested placeholders.
-		var err error
-		replacement.Value, err = resolvePropertyValue(
-			replacement.Value,
-			properties,
-			resolving,
-		)
+		resolved, err := resolvePropertyValue(raw, properties, resolving)
+
+		if exists {
+			// Allow the property to be resolved again elsewhere.
+			delete(resolving, key)
+		}
 		if err != nil {
 			return "", err
 		}
 
-		// Allow the property to be resolved again elsewhere.
-		delete(resolving, key)
-
-		// Replace the placeholder with its resolved value.
-		value = value[:match[0]] + replacement.Value + value[match[1]:]
+		sb.WriteString(resolved)
 	}
+
+	sb.WriteString(value[last:])
+	return sb.String(), nil
 }
 
 func buildPropertiesText(properties map[string]model.ConfigProperty) string {

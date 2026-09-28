@@ -788,6 +788,17 @@ func TestResolvePropertyValue(t *testing.T) {
 			properties: map[string]model.ConfigProperty{},
 			expected:   "${missing.key}",
 		},
+		{
+			name:  "PresentPlaceholderAfterMissingPlaceholder",
+			value: "${missing}/${present}",
+			properties: map[string]model.ConfigProperty{
+				"present": {
+					Key:   "present",
+					Value: "key",
+				},
+			},
+			expected: "${missing}/key",
+		},
 	}
 
 	for _, tt := range tests {
