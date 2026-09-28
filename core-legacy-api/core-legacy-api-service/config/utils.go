@@ -392,7 +392,7 @@ func forceSingleQuotes(node *yaml.Node) {
 }
 func GetFiberParam(fiberCtx *fiber.Ctx, paramName string) string {
 	paramValue := fiberCtx.Params(paramName)
-	unescapedStr, err := url.QueryUnescape(paramValue)
+	unescapedStr, err := url.PathUnescape(paramValue)
 	if err != nil {
 		return utils.CopyString(paramValue)
 	}
