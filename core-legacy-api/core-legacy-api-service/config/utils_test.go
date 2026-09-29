@@ -934,3 +934,67 @@ func TestGroupPropertiesByApplication(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitApplicationAndProfiles(t *testing.T) {
+	tests := []struct {
+		name                string
+		input               string
+		expectedApplication string
+		expectedProfiles    string
+		wantErr             bool
+	}{
+		{
+			name:                "application with profile",
+			input:               "my-service-default",
+			expectedApplication: "my-service",
+			expectedProfiles:    "default",
+			wantErr:             false,
+		},
+		{
+			name:                "application name contains multiple hyphens",
+			input:               "tenant-manager-default",
+			expectedApplication: "tenant-manager",
+			expectedProfiles:    "default",
+			wantErr:             false,
+		},
+		{
+			name:                "multiple hyphens in application and profile",
+			input:               "my-long-service-prod",
+			expectedApplication: "my-long-service",
+			expectedProfiles:    "prod",
+			wantErr:             false,
+		},
+		{
+			name:                "no hyphen",
+			input:               "service",
+			expectedApplication: "",
+			expectedProfiles:    "",
+			wantErr:             true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			application, profiles, err := splitApplicationAndProfiles(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if application != tt.expectedApplication {
+				t.Errorf("application = %q, want %q", application, tt.expectedApplication)
+			}
+
+			if profiles != tt.expectedProfiles {
+				t.Errorf("profiles = %q, want %q", profiles, tt.expectedProfiles)
+			}
+		})
+	}
+}

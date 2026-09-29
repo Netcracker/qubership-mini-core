@@ -398,3 +398,16 @@ func GetFiberParam(fiberCtx *fiber.Ctx, paramName string) string {
 	}
 	return utils.CopyString(unescapedStr)
 }
+
+func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error) {
+	idx := strings.LastIndex(nameWithProfiles, "-")
+
+	if idx <= 0 || idx == len(nameWithProfiles)-1 {
+		return "", "", fmt.Errorf("invalid application-profile value: %q", nameWithProfiles)
+	}
+
+	application := nameWithProfiles[:idx]
+	profiles := nameWithProfiles[idx+1:]
+
+	return application, profiles, nil
+}

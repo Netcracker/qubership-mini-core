@@ -82,7 +82,7 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 
 	environment := buildEnvironment(
 		application,
-		[]string{c.Params("profile")},
+		[]string{GetFiberParam(c, "profile")},
 		label,
 		properties,
 	)
@@ -103,9 +103,12 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 // @Router /{label}/{name}-{profiles}.json [get]
 func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-
-	application := GetFiberParam(c, "name")
-	activeProfiles := strings.Split(GetFiberParam(c, "profiles"), ",")
+	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
+	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
+	if err != nil {
+		return RespondWithError(c, http.StatusNotFound, err.Error())
+	}
+	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
 	logger.InfoC(ctx, "Finding JSON config for application=%s, profiles=%s", application, activeProfiles)
@@ -142,9 +145,12 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 // @Router /{label}/{name}-{profiles}.properties [get]
 func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-
-	application := GetFiberParam(c, "name")
-	activeProfiles := strings.Split(GetFiberParam(c, "profiles"), ",")
+	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
+	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
+	if err != nil {
+		return RespondWithError(c, http.StatusNotFound, err.Error())
+	}
+	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
 	logger.InfoC(ctx, "Finding properties-format config for application=%s, profiles=%s", application, activeProfiles)
@@ -185,8 +191,12 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
-	application := GetFiberParam(c, "name")
-	activeProfiles := strings.Split(GetFiberParam(c, "profiles"), ",")
+	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
+	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
+	if err != nil {
+		return RespondWithError(c, http.StatusNotFound, err.Error())
+	}
+	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
 	logger.InfoC(ctx, "Finding YAML config for application=%s, profiles=%s", application, activeProfiles)

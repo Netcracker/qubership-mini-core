@@ -151,9 +151,9 @@ func TestFindOneJSON_OK(t *testing.T) {
 		Return(appProfile, nil)
 
 	app := fiber.New()
-	app.Get("/:name/:profiles", controller.FindOneJSON)
+	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
 
-	req := httptest.NewRequest(http.MethodGet, "/test-app/default", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test-app-default.json", nil)
 
 	resp, err := app.Test(req)
 	assert.NoError(t, err)
@@ -210,9 +210,9 @@ func TestFindOneYaml_OK(t *testing.T) {
 		Return(appProfile, nil)
 
 	app := fiber.New()
-	app.Get("/:name/:profiles", controller.FindOneYaml)
+	app.Get("/:nameAndProfiles.yaml", controller.FindOneYaml)
 
-	req := httptest.NewRequest(http.MethodGet, "/test-app/default", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test-app-default.yaml", nil)
 
 	resp, err := app.Test(req)
 	assert.NoError(t, err)
@@ -222,11 +222,11 @@ func TestFindOneYaml_OK(t *testing.T) {
 	assert.NoError(t, err)
 
 	expected := `app:
-    key: app-value
+   key: app-value
 global:
-    key: global-value
+   key: global-value
 `
-	assert.Equal(t, expected, string(body))
+	assert.YAMLEq(t, expected, string(body))
 }
 
 func TestAddProperties_OK(t *testing.T) {
@@ -350,7 +350,7 @@ func TestDeleteProperties_BadRequest(t *testing.T) {
 
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, "Invalid request body", string(body))
+	assert.Equal(t, "{\"error\":\"Invalid request body\"}", string(body))
 }
 
 func TestGetApplicationsAndProfiles_MultipleApplications(t *testing.T) {
@@ -513,9 +513,9 @@ func TestFindOneJSON_WithResolvePlaceholders_False(t *testing.T) {
 		Return(appProfile, nil)
 
 	app := fiber.New()
-	app.Get("/:name/:profiles", controller.FindOneJSON)
+	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
 
-	req := httptest.NewRequest(http.MethodGet, "/test-app/default?resolvePlaceholders=false", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test-app-default.json?resolvePlaceholders=false", nil)
 
 	resp, err := app.Test(req)
 	assert.NoError(t, err)
@@ -563,9 +563,9 @@ func TestFindOneJSON_WithResolvePlaceholders_True(t *testing.T) {
 		Return(appProfile, nil)
 
 	app := fiber.New()
-	app.Get("/:name/:profiles", controller.FindOneJSON)
+	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
 
-	req := httptest.NewRequest(http.MethodGet, "/test-app/default?resolvePlaceholders=true", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test-app-default.json?resolvePlaceholders=true", nil)
 
 	resp, err := app.Test(req)
 	assert.NoError(t, err)
@@ -614,9 +614,9 @@ func TestFindOneProperties_OK(t *testing.T) {
 		Return(appProfile, nil)
 
 	app := fiber.New()
-	app.Get("/:name/:profiles", controller.FindOneProperties)
+	app.Get("/:nameAndProfiles.properties", controller.FindOneProperties)
 
-	req := httptest.NewRequest(http.MethodGet, "/test-app/default", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test-app-default.properties", nil)
 
 	resp, err := app.Test(req)
 	assert.NoError(t, err)
@@ -664,9 +664,9 @@ func TestFindOneProperties_WithResolvePlaceholders(t *testing.T) {
 		Return(appProfile, nil)
 
 	app := fiber.New()
-	app.Get("/:name/:profiles", controller.FindOneProperties)
+	app.Get("/:nameAndProfiles.properties", controller.FindOneProperties)
 
-	req := httptest.NewRequest(http.MethodGet, "/test-app/default?resolvePlaceholders=true", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test-app-default.properties?resolvePlaceholders=true", nil)
 
 	resp, err := app.Test(req)
 	assert.NoError(t, err)
