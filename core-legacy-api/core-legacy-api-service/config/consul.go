@@ -78,7 +78,7 @@ func (s *consulService) performTransaction(ctx context.Context, operation api.Tx
 }
 
 func (s *consulService) FindAll(ctx context.Context) ([]model.ConfigProfile, error) {
-	prefix := consulConfigPrefix + "/" + s.namespace
+	prefix := consulConfigPrefix + "/" + s.namespace + "/"
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	// Get all KV pairs under the prefix.
 	pairs, _, err := s.consul.KV().List(prefix, queryOptions)
