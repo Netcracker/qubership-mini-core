@@ -11,9 +11,9 @@ CLIENT_SECRET: "/etc/secret"
 GATEWAY_URL: "http://internal-gateway-service:8080"
 MONITORING_INSTALL: true
 ALLOWED_HEADERS: ''
-CLOUD_ADMIN_EMAIL: "TestTenantManagementGroup@netcracker.com"
-EMAIL_FROM: "no-reply@openshift.sdntest.netcracker"
-EMAIL_HOST: "iplanet.netcracker.com"
+CLOUD_ADMIN_EMAIL: ""
+EMAIL_FROM: ""
+EMAIL_HOST: ""
 EMAIL_PASSWORD: ''
 EMAIL_USER: ''
 
