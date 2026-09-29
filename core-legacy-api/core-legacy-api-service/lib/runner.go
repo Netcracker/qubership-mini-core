@@ -130,17 +130,17 @@ func RunService() {
 func GetConsulToken() (string, error) {
 	tokenPathValue := configloader.GetOrDefault("consul.token.path", nil)
 	if tokenPathValue == nil {
-		return "", fmt.Errorf("Parameter %s is required but could not be found and no default value was provided", tokenPathValue)
+		return "", fmt.Errorf("parameter consul.token.path is required but could not be found and no default value was provided")
 	}
 	var tokenPath string
 	if s, ok := tokenPathValue.(string); ok {
 		tokenPath = s
 	} else {
-		tokenPath = fmt.Sprintf("%v", tokenPath)
+		tokenPath = fmt.Sprintf("%v", tokenPathValue)
 	}
 	tokenBytes, err := os.ReadFile(tokenPath)
 	if err != nil {
-		return "", fmt.Errorf("Failed to read Consul token from file %s: %v. Consul is enabled but token file is not accessible.", tokenPath, err)
+		return "", fmt.Errorf("failed to read Consul token from file %s: %v. Consul is enabled but token file is not accessible", tokenPath, err)
 	}
 	return strings.TrimSpace(string(tokenBytes)), nil
 }
