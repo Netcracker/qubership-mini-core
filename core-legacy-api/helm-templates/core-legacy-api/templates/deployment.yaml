@@ -81,12 +81,10 @@ spec:
         - name: topology
           configMap:
             name: topology
-{{ if .Values.CONSUL_ENABLED }}
         - name: consul-token
           secret:
             secretName: config-server-consul-token
             defaultMode: 288
-{{ end }}
       containers:
         - name: '{{ .Values.SERVICE_NAME }}'
           image: '{{ .Values.IMAGE_REPOSITORY }}:{{ .Values.TAG }}'
@@ -111,11 +109,9 @@ spec:
             - name: topology
               mountPath: /etc/topology
               readOnly: true
-{{ if .Values.CONSUL_ENABLED }}
             - name: consul-token
               mountPath: /var/run/secrets/consul-token
               readOnly: true
-{{ end }}
           args:
             - /app/core-legacy-api
           ports:
@@ -179,12 +175,8 @@ spec:
               value: '{{ .Values.NC_DIAGNOSTIC_AGENT_SERVICE }}'
             - name: BASELINE_PROJ
               value: '{{ .Values.BASELINE_PROJ }}'
-            - name: CONSUL_ENABLED
-              value: '{{ .Values.CONSUL_ENABLED | default false }}'
-                {{ if .Values.CONSUL_ENABLED }}
             - name: CONSUL_URL
               value: '{{ .Values.CONSUL_URL }}'
-                {{ end }}
             - name: HTTP_BUFFER_HEADER_MAX_SIZE
               value: '{{ .Values.HTTP_BUFFER_HEADER_MAX_SIZE }}'
           resources:

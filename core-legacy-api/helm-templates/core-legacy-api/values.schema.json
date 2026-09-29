@@ -397,13 +397,6 @@
       "description": "Name of a service.",
       "internal": true
     },
-    "CONSUL_ENABLED": {
-      "$id": "#/properties/CONSUL_ENABLED",
-      "$ref": "#/definitions/booleanOrString",
-      "description": "Consul is enabled",
-      "internal": true,
-      "title": "The CONSUL_ENABLED schema"
-    },
     "CONSUL_URL": {
       "$id": "#/properties/CONSUL_URL",
       "type": "string",
