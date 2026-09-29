@@ -53,15 +53,36 @@ func RunService() {
 		return
 	}
 
+	u, err := url.Parse(consulURL)
+	if err != nil {
+		logger.Errorf("invalid consul.url %q: %w", consulURL, err)
+		return
+	}
+
+	conf := api.DefaultConfig()
+	conf.Address = u.Host
+	conf.Scheme = u.Scheme
+	conf.Token = consulToken
+
+	consulClient, err := api.NewClient(conf)
+
+	if err != nil {
+		logger.Errorf("Couldn't create Consul client: %w", err)
+		return
+	}
+	consulService := config.NewConsulService(consulClient, namespace)
+
 	healthService, err := health.NewHealthService()
 	if err != nil {
 		logger.Error("Couldn't create healthService")
+		return
 	}
 
 	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
 		WithHealth("/health", healthService).
 		WithPrometheus("/prometheus").
 		Process()
+
 	if err != nil {
 		logger.Errorf("Error while create app because: %s", err.Error())
 		return
@@ -77,15 +98,7 @@ func RunService() {
 		c.SetUserContext(ctx)
 		return c.Next()
 	})
-	u, _ := url.Parse(consulURL)
 
-	conf := api.DefaultConfig()
-	conf.Address = u.Host
-	conf.Scheme = u.Scheme
-	conf.Token = consulToken
-
-	consulClient, _ := api.NewClient(conf)
-	consulService := config.NewConsulService(consulClient, namespace)
 	err = config.InitializeDefaultProperties(consulService, ctx)
 	if err != nil {
 		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
