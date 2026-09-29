@@ -49,9 +49,8 @@ func toConfigProperties(properties []*api.KVPair, prefix string) []model.ConfigP
 		}
 
 		result = append(result, model.ConfigProperty{
-			Key:       key,
-			Value:     value,
-			Encrypted: nil,
+			Key:   key,
+			Value: value,
 		})
 	}
 

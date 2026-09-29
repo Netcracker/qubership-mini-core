@@ -70,14 +70,12 @@ func TestToConfigProperties_ConvertsProperties(t *testing.T) {
 
 	expected := []model.ConfigProperty{
 		{
-			Key:       "database.url",
-			Value:     "jdbc:postgresql://localhost",
-			Encrypted: nil,
+			Key:   "database.url",
+			Value: "jdbc:postgresql://localhost",
 		},
 		{
-			Key:       "server.port",
-			Value:     "8080",
-			Encrypted: nil,
+			Key:   "server.port",
+			Value: "8080",
 		},
 	}
 
