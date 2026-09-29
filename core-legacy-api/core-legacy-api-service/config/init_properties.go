@@ -11,27 +11,58 @@ import (
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 )
 
-func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
-	err := InitializeGlobalDefaultProperties(s, ctx)
-	if err != nil {
+const defaultPropertiesMarkerKey = "default_properties_initialized"
 
+func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
+	// Check whether the default properties have already been initialized.
+	initialized, err := isDefaultPropertiesInitialized(ctx, s)
+	if err != nil {
+		logger.ErrorC(ctx, "Failed to check default properties initialization: %v", err)
 		return err
 	}
+	if initialized {
+		logger.InfoC(ctx, "Default properties are already initialized, skipping initialization")
+		return nil
+	}
+
+	// Initialize the global default properties required by the system.
+	if err := InitializeGlobalDefaultProperties(s, ctx); err != nil {
+		return err
+	}
+
+	// Initialize baseline properties when a baseline project is configured.
 	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
 	if strings.TrimSpace(baselineProj) != "" {
 		if err := InitializeBaselineProperties(s, ctx); err != nil {
 			return err
 		}
 	}
-	err = InitializeTenantManagerDefaultProperties(s, ctx)
-	if err != nil {
+
+	// Initialize default properties for Tenant Manager.
+	if err := InitializeTenantManagerDefaultProperties(s, ctx); err != nil {
 		return err
 	}
-	err = InitializeDmpTenantActivatorDefaultProperties(s, ctx)
-	if err != nil {
+
+	// Initialize default properties for DMP Tenant Activator.
+	if err := InitializeDmpTenantActivatorDefaultProperties(s, ctx); err != nil {
 		return err
 	}
-	return nil
+
+	// Mark the default properties as initialized to prevent repeated initialization.
+	return s.AddProperties(ctx, "system", defaultProfileName, map[string]string{
+		defaultPropertiesMarkerKey: "true",
+	})
+}
+
+func isDefaultPropertiesInitialized(ctx context.Context, s ConfigService) (bool, error) {
+	profile, err := s.FindByApplicationAndProfile(ctx, "system", defaultProfileName)
+	if err != nil {
+		return false, err
+	}
+	if value, ok := profile.GetPropertiesAsMap()[defaultPropertiesMarkerKey]; ok {
+		return value.Value == "true", nil
+	}
+	return false, nil
 }
 
 func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) error {
