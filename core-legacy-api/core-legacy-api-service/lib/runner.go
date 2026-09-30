@@ -145,12 +145,9 @@ func GetConsulToken() (string, error) {
 	if tokenPathValue == nil {
 		return "", fmt.Errorf("parameter consul.token.path is required but could not be found and no default value was provided")
 	}
-	var tokenPath string
-	if s, ok := tokenPathValue.(string); ok {
-		tokenPath = s
-	} else {
-		tokenPath = fmt.Sprintf("%v", tokenPathValue)
-	}
+
+	tokenPath := fmt.Sprintf("%v", tokenPathValue)
+
 	tokenBytes, err := os.ReadFile(tokenPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read Consul token from file %s: %v. Consul is enabled but token file is not accessible", tokenPath, err)
