@@ -2,12 +2,18 @@ package config
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func RespondWithError(c *fiber.Ctx, code int, msg string) error {
-	return RespondWithJson(c, code, map[string]string{"error": msg})
+	return RespondWithJson(c, code, map[string]interface{}{
+		"timestamp": time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
+		"status":    code,
+		"error":     msg,
+		"path":      c.Path(),
+	})
 }
 
 func RespondWithJson(c *fiber.Ctx, code int, payload interface{}) error {
@@ -25,9 +31,11 @@ func ResponseOk(c *fiber.Ctx, payload interface{}) error {
 	if payload != nil {
 		return RespondWithJson(c, http.StatusOK, payload)
 	}
-	return c.SendStatus(http.StatusOK)
+	c.Status(http.StatusOK)
+	return nil
 }
 
 func ResponseCreated(c *fiber.Ctx) error {
-	return c.SendStatus(http.StatusCreated)
+	c.Status(http.StatusCreated)
+	return nil
 }

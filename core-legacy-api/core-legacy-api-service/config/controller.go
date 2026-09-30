@@ -46,7 +46,7 @@ func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 	configProfiles, err := ctrl.sv.FindAll(ctx)
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to get applications: %s", err.Error())
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	result := toApplicationResponses(groupProfilesByApplication(configProfiles))
@@ -77,7 +77,7 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to load merged properties for application=%s: %s", application, err.Error())
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	environment := buildEnvironment(
@@ -106,7 +106,7 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
 	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
 	if err != nil {
-		return RespondWithError(c, http.StatusNotFound, err.Error())
+		return RespondWithError(c, http.StatusNotFound, "Not Found")
 	}
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
@@ -117,14 +117,14 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to load merged properties for application=%s: %s", application, err.Error())
 
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	if resolvePlaceholders {
 		var err error
 		err = resolveProperties(properties)
 		if err != nil {
-			return RespondWithError(c, http.StatusBadRequest, err.Error())
+			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
 		}
 	}
 	result := buildNestedProperties(properties)
@@ -148,7 +148,7 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
 	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
 	if err != nil {
-		return RespondWithError(c, http.StatusNotFound, err.Error())
+		return RespondWithError(c, http.StatusNotFound, "Not Found")
 	}
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
@@ -158,14 +158,14 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to load merged properties for application=%s: %s", application, err.Error())
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	if resolvePlaceholders {
 		var err error
 		err = resolveProperties(properties)
 		if err != nil {
-			return RespondWithError(c, http.StatusBadRequest, err.Error())
+			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
 		}
 	}
 	c.Set("Content-Type", "text/plain")
@@ -194,7 +194,7 @@ func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
 	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
 	if err != nil {
-		return RespondWithError(c, http.StatusNotFound, err.Error())
+		return RespondWithError(c, http.StatusNotFound, "Not Found")
 	}
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
@@ -204,14 +204,14 @@ func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to load merged properties for application=%s: %s", application, err.Error())
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	if resolvePlaceholders {
 		var err error
 		err = resolveProperties(properties)
 		if err != nil {
-			return RespondWithError(c, http.StatusBadRequest, err.Error())
+			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
 		}
 	}
 
@@ -219,7 +219,7 @@ func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 
 	yamlBytes, err := marshalWithSingleQuotes(nested)
 	if err != nil {
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 	return RespondWithBytes(c, http.StatusOK, yamlBytes)
 }
@@ -280,12 +280,12 @@ func (ctrl *ConfigController) AddProperties(c *fiber.Ctx) error {
 	err := c.BodyParser(&newProperties)
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to parse request body: %s", err.Error())
-		return RespondWithError(c, http.StatusBadRequest, err.Error())
+		return RespondWithError(c, http.StatusBadRequest, "Bad Request")
 	}
 	err = ctrl.sv.AddProperties(ctx, application, profile, newProperties)
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to add properties for application=%s, profile=%s: %s", application, profile, err.Error())
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 	logger.InfoC(ctx, "Added %d properties for application=%s, profile=%s", len(newProperties), application, profile)
 	return ResponseCreated(c)
@@ -313,7 +313,7 @@ func (ctrl *ConfigController) DeleteProperties(c *fiber.Ctx) error {
 	if len(c.Body()) > 0 {
 		if err := c.BodyParser(&properties); err != nil {
 			logger.ErrorC(ctx, "Failed to parse request body: %s", err.Error())
-			return RespondWithError(c, http.StatusBadRequest, "Invalid request body")
+			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
 		}
 	}
 	var err error
@@ -328,7 +328,7 @@ func (ctrl *ConfigController) DeleteProperties(c *fiber.Ctx) error {
 	}
 	if err != nil {
 		logger.ErrorC(ctx, "Failed to delete properties/profile for application=%s, profile=%s: %s", application, profile, err.Error())
-		return RespondWithError(c, http.StatusInternalServerError, err.Error())
+		return RespondWithError(c, http.StatusInternalServerError, "Internal Server Error")
 	}
 	logger.InfoC(ctx, "Delete succeeded for application=%s, profile=%s", application, profile)
 	return ResponseOk(c, nil)
