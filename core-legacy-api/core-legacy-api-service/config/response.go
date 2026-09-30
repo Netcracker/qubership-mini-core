@@ -7,12 +7,19 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type ErrorResponse struct {
+	Timestamp string `json:"timestamp"`
+	Status    int    `json:"status"`
+	Error     string `json:"error"`
+	Path      string `json:"path"`
+}
+
 func RespondWithError(c *fiber.Ctx, code int, msg string) error {
-	return RespondWithJson(c, code, map[string]interface{}{
-		"timestamp": time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
-		"status":    code,
-		"error":     msg,
-		"path":      c.Path(),
+	return RespondWithJson(c, code, ErrorResponse{
+		Timestamp: time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
+		Status:    code,
+		Error:     msg,
+		Path:      c.Path(),
 	})
 }
 
