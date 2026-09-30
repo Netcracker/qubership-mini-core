@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
+	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/tracing"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/podsecrets-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
@@ -77,6 +78,8 @@ func RunService() {
 	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
 		WithHealth("/health", healthService).
 		WithPrometheus("/prometheus").
+		WithTracer(tracing.NewZipkinTracer()).
+		WithApiVersion().
 		Process()
 
 	if err != nil {
