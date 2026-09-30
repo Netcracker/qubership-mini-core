@@ -139,6 +139,14 @@ func TestFindOneJSON_OK(t *testing.T) {
 				Key:   "app.key",
 				Value: "app-value",
 			},
+			{
+				Key:   "app2.key[0]",
+				Value: "app-value",
+			},
+			{
+				Key:   "app2.key[2]",
+				Value: "app-value",
+			},
 		},
 	}
 
@@ -170,6 +178,9 @@ func TestFindOneJSON_OK(t *testing.T) {
 		"app": map[string]any{
 			"key": "app-value",
 		},
+		"app2": map[string]any{
+			"key": []interface{}{"app-value", nil, "app-value"},
+		},
 	}
 
 	assert.Equal(t, expected, result)
@@ -198,6 +209,14 @@ func TestFindOneYaml_OK(t *testing.T) {
 				Key:   "app.key",
 				Value: "app-value",
 			},
+			{
+				Key:   "app.key2[0]",
+				Value: "app-value",
+			},
+			{
+				Key:   "app.key2[2]",
+				Value: "app-value",
+			},
 		},
 	}
 
@@ -223,6 +242,10 @@ func TestFindOneYaml_OK(t *testing.T) {
 
 	expected := `app:
    key: app-value
+   key2:
+       - app-value
+       - null
+       - app-value
 global:
    key: global-value
 `

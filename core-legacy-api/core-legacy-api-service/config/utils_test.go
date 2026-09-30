@@ -714,6 +714,259 @@ func TestBuildNestedProperties(t *testing.T) {
 				}
 			},
 		},
+		// ---------- lists ----------
+		{
+			name: "SimpleList",
+			properties: map[string]model.ConfigProperty{
+				"tags[0]": {
+					Key:   "tags[0]",
+					Value: "a",
+				},
+				"tags[1]": {
+					Key:   "tags[1]",
+					Value: "b",
+				},
+				"tags[2]": {
+					Key:   "tags[2]",
+					Value: "c",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"tags": []interface{}{"a", "b", "c"},
+				}, result)
+			},
+		},
+		{
+			name: "ListOfObjects",
+			properties: map[string]model.ConfigProperty{
+				"servers[0].host": {
+					Key:   "servers[0].host",
+					Value: "a",
+				},
+				"servers[0].port": {
+					Key:   "servers[0].port",
+					Value: "80",
+				},
+				"servers[1].host": {
+					Key:   "servers[1].host",
+					Value: "b",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"servers": []interface{}{
+						map[string]interface{}{"host": "a", "port": "80"},
+						map[string]interface{}{"host": "b"},
+					},
+				}, result)
+			},
+		},
+		{
+			name: "OutOfOrderIndexes",
+			properties: map[string]model.ConfigProperty{
+				"list[2]": {
+					Key:   "list[2]",
+					Value: "c",
+				},
+				"list[0]": {
+					Key:   "list[0]",
+					Value: "a",
+				},
+				"list[1]": {
+					Key:   "list[1]",
+					Value: "b",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"list": []interface{}{"a", "b", "c"},
+				}, result)
+			},
+		},
+		{
+			name: "GapInList",
+			properties: map[string]model.ConfigProperty{
+				"list[0]": {
+					Key:   "list[0]",
+					Value: "a",
+				},
+				"list[2]": {
+					Key:   "list[2]",
+					Value: "c",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"list": []interface{}{"a", nil, "c"},
+				}, result)
+			},
+		},
+		{
+			name: "NestedLists",
+			properties: map[string]model.ConfigProperty{
+				"matrix[0][0]": {
+					Key:   "matrix[0][0]",
+					Value: "1",
+				},
+				"matrix[0][1]": {
+					Key:   "matrix[0][1]",
+					Value: "2",
+				},
+				"matrix[1][0]": {
+					Key:   "matrix[1][0]",
+					Value: "3",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"matrix": []interface{}{
+						[]interface{}{"1", "2"},
+						[]interface{}{"3"},
+					},
+				}, result)
+			},
+		},
+		{
+			name: "ListInsideNestedMap",
+			properties: map[string]model.ConfigProperty{
+				"app.servers[0].name": {
+					Key:   "app.servers[0].name",
+					Value: "a",
+				},
+				"app.servers[1].name": {
+					Key:   "app.servers[1].name",
+					Value: "b",
+				},
+				"app.name": {
+					Key:   "app.name",
+					Value: "myapp",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"app": map[string]interface{}{
+						"name": "myapp",
+						"servers": []interface{}{
+							map[string]interface{}{"name": "a"},
+							map[string]interface{}{"name": "b"},
+						},
+					},
+				}, result)
+			},
+		},
+		{
+			name: "MapListMapListMix",
+			properties: map[string]model.ConfigProperty{
+				"a.b[0].c[1].d": {
+					Key:   "a.b[0].c[1].d",
+					Value: "x",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"a": map[string]interface{}{
+						"b": []interface{}{
+							map[string]interface{}{
+								"c": []interface{}{
+									nil,
+									map[string]interface{}{"d": "x"},
+								},
+							},
+						},
+					},
+				}, result)
+			},
+		},
+
+		// ---------- lists: malformed keys (stored flat) ----------
+		{
+			name: "MalformedKeysStoredFlat",
+			properties: map[string]model.ConfigProperty{
+				"a[": {
+					Key:   "a[",
+					Value: "1",
+				},
+				"a[x]": {
+					Key:   "a[x]",
+					Value: "2",
+				},
+				"a[-1]": {
+					Key:   "a[-1]",
+					Value: "3",
+				},
+				"a..b": {
+					Key:   "a..b",
+					Value: "4",
+				},
+				// root must be a map, so a leading index is invalid
+				"[0]": {
+					Key:   "[0]",
+					Value: "5",
+				},
+				"a[0]b": {
+					Key:   "a[0]b",
+					Value: "6",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"a[":    "1",
+					"a[x]":  "2",
+					"a[-1]": "3",
+					"a..b":  "4",
+					"[0]":   "5",
+					"a[0]b": "6",
+				}, result)
+			},
+		},
+		{
+			name: "IndexTooLargeStoredFlat",
+			properties: map[string]model.ConfigProperty{
+				// above maxListIndex
+				"a[10001]": {
+					Key:   "a[10001]",
+					Value: "1",
+				},
+				// overflows int
+				"b[99999999999999999999]": {
+					Key:   "b[99999999999999999999]",
+					Value: "2",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"a[10001]":                "1",
+					"b[99999999999999999999]": "2",
+				}, result)
+			},
+		},
+
+		// ---------- lists: conflicts ----------
+		{
+			// Keys are sorted, so "a.b" is processed before "a[0]":
+			// "a" becomes a map, and "a[0]" can't be a list index on it,
+			// so it is preserved as a flat literal key.
+			name: "ListVsMapConflict",
+			properties: map[string]model.ConfigProperty{
+				"a[0]": {
+					Key:   "a[0]",
+					Value: "x",
+				},
+				"a.b": {
+					Key:   "a.b",
+					Value: "y",
+				},
+			},
+			validate: func(t *testing.T, result map[string]interface{}) {
+				assert.Equal(t, map[string]interface{}{
+					"a": map[string]interface{}{
+						"b": "y",
+					},
+					"a[0]": "x",
+				}, result)
+			},
+		},
 	}
 
 	for _, tt := range tests {
