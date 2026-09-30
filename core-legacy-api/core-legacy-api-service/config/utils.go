@@ -230,10 +230,10 @@ const maxListIndex = 10000 // guard against list[999999999] allocating huge slic
 
 var (
 	// Matches "app", "app[0]", "app[0][1]", etc.
-	partRe = regexp.MustCompile(`^([^\[\]]*)((?:\[\d+\])*)$`)
+	partRe = regexp.MustCompile(`^([^\[\]]*)((?:\[\d+])*)$`)
 
 	// Matches "[0]", "[1]", "[123]", etc.
-	idxRe = regexp.MustCompile(`\[(\d+)\]`)
+	idxRe = regexp.MustCompile(`\[(\d+)]`)
 )
 
 type pathToken struct {
@@ -437,7 +437,7 @@ func resolveProperties(properties map[string]model.ConfigProperty) error {
 }
 
 // Compile once; matches ${key} and ${key:default}.
-var placeholderRe = regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
+var placeholderRe = regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?}`)
 
 func resolvePropertyValue(value string, properties map[string]model.ConfigProperty, resolving map[string]bool) (string, error) {
 	if resolving == nil {
