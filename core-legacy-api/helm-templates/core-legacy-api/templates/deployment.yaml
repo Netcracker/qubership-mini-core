@@ -81,10 +81,23 @@ spec:
         - name: topology
           configMap:
             name: topology
-        - name: consul-token
-          secret:
-            secretName: config-server-consul-token
-            defaultMode: 288
+        - name: pod-secrets
+          projected:
+            sources:
+            - secret:
+                      name: config-server-email-secret
+                      items:
+                        - key: username
+                          path: EMAIL_USER
+                        - key: password
+                          path: EMAIL_PASSWORD
+                          {{- if .Values.CONSUL_ENABLED }}
+            - secret:
+                      name: config-server-consul-token
+                      items:
+                        - key: token
+                          path: CONSUL_TOKEN
+                          {{- end }}
       containers:
         - name: '{{ .Values.SERVICE_NAME }}'
           image: '{{ .Values.IMAGE_REPOSITORY }}:{{ .Values.TAG }}'
@@ -103,14 +116,14 @@ spec:
             - name: "{{ .Values.SSL_SECRET }}"
               mountPath: "/tmp/cert/{{ .Values.SSL_SECRET }}"
               readOnly: true
+            - name: pod-secrets
+              mountPath: /etc/secrets/pod-secrets
+              readOnly: true
             - name: projected-tokens
               mountPath: /var/run/secrets/tokens
               readOnly: true
             - name: topology
               mountPath: /etc/topology
-              readOnly: true
-            - name: consul-token
-              mountPath: /var/run/secrets/consul-token
               readOnly: true
           args:
             - /app/core-legacy-api
@@ -151,10 +164,6 @@ spec:
               value: '{{ .Values.CLOUD_PRIVATE_HOST }}'
             - name: EMAIL_HOST
               value: '{{ .Values.EMAIL_HOST }}'
-            - name: EMAIL_USER
-              value: '{{ .Values.EMAIL_USER }}'
-            - name: EMAIL_PASSWORD
-              value: '{{ .Values.EMAIL_PASSWORD }}'
             - name: EMAIL_FROM
               value: '{{ .Values.EMAIL_FROM }}'
             - name: CLOUD_ADMIN_EMAIL
