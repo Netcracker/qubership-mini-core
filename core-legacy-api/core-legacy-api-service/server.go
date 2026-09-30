@@ -6,6 +6,9 @@ import (
 	fiberSec "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+
+	// memlimit sets memory limit = 0.9 of cgroup memory limit
+	_ "github.com/netcracker/qubership-core-lib-go/v3/memlimit"
 )
 
 func init() {
