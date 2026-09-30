@@ -418,28 +418,6 @@
       "description": "Consul admin token",
       "internal": true
     },
-    "NC_DIAGNOSTIC_MODE": {
-      "$id": "#/properties/NC_DIAGNOSTIC_MODE",
-      "type": "string",
-      "title": "The NC_DIAGNOSTIC_MODE schema",
-      "description": "Type of CDT diagnostic mode",
-      "examples": [
-        "dev",
-        "prod",
-        "off"
-      ],
-      "internal": true
-    },
-    "NC_DIAGNOSTIC_AGENT_SERVICE": {
-      "$id": "#/properties/NC_DIAGNOSTIC_AGENT_SERVICE",
-      "type": "string",
-      "title": "The NC_DIAGNOSTIC_AGENT_SERVICE schema",
-      "description": "Diagnostic agent location",
-      "examples": [
-        "nc-diagnostic-agent"
-      ],
-      "internal": true
-    },
     "BASELINE_PROJ": {
       "$id": "#/properties/BASELINE_PROJ",
       "type": "string",

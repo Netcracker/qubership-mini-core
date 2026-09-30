@@ -7,9 +7,6 @@ READONLY_CONTAINER_FILE_SYSTEM_ENABLED: true
 
 SERVICE_NAME: "core-legacy-api"
 SSL_SECRET: "defaultsslcertificate"
-CLIENT_SECRET: "/etc/secret"
-GATEWAY_URL: "http://internal-gateway-service:8080"
-MONITORING_INSTALL: true
 ALLOWED_HEADERS: ''
 CLOUD_ADMIN_EMAIL: ""
 EMAIL_FROM: ""

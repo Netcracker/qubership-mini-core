@@ -154,8 +154,6 @@ spec:
               value: '{{ .Values.LOG_LEVEL }}'
             - name: ALLOWED_HEADERS
               value: '{{ .Values.ALLOWED_HEADERS }}'
-            - name: API_DBAAS_ADDRESS
-              value: '{{ .Values.API_DBAAS_ADDRESS }}'
             - name: CLOUD_PUBLIC_HOST
               value: '{{ .Values.CLOUD_PUBLIC_HOST }}'
             - name: CLOUD_PRIVATE_HOST
@@ -176,10 +174,6 @@ spec:
               value: '{{ .Values.CLOUD_API_PORT }}'
             - name: CLOUD_PROTOCOL
               value: '{{ .Values.CLOUD_PROTOCOL }}'
-            - name: NC_DIAGNOSTIC_MODE
-              value: '{{ .Values.NC_DIAGNOSTIC_MODE }}'
-            - name: NC_DIAGNOSTIC_AGENT_SERVICE
-              value: '{{ .Values.NC_DIAGNOSTIC_AGENT_SERVICE }}'
             - name: BASELINE_PROJ
               value: '{{ .Values.BASELINE_PROJ }}'
             - name: CONSUL_URL
