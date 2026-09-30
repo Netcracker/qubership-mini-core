@@ -91,13 +91,11 @@ spec:
                           path: EMAIL_USER
                         - key: password
                           path: EMAIL_PASSWORD
-                          {{- if .Values.CONSUL_ENABLED }}
             - secret:
                       name: config-server-consul-token
                       items:
                         - key: token
                           path: CONSUL_TOKEN
-                          {{- end }}
       containers:
         - name: '{{ .Values.SERVICE_NAME }}'
           image: '{{ .Values.IMAGE_REPOSITORY }}:{{ .Values.TAG }}'
