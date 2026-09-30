@@ -2,16 +2,15 @@ package lib
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
+	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/podsecrets-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
 
@@ -38,20 +37,18 @@ var (
 
 func RunService() {
 	ctxmanager.Register(baseproviders.Get())
-
 	consulPS := consul.NewLoggingPropertySource()
-	propertySources := configloader.BasePropertySources()
-	configloader.InitWithSourcesArray(append(propertySources, consulPS))
+	sources := configloader.BasePropertySources()
+	sources = podsecrets.AddPodSecretsPropertySource(sources)
+	configloader.InitWithSourcesArray(append(sources, consulPS))
+
+	configloader.InitWithSourcesArray(sources)
 	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {
 	})
 
 	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
 	consulURL := configloader.GetOrDefaultString("consul.url", "")
-	consulToken, err := GetConsulToken()
-	if err != nil {
-		logger.Errorf("%s", err.Error())
-		return
-	}
+	consulToken := configloader.GetOrDefaultString("consul.token", "")
 
 	u, err := url.Parse(consulURL)
 	if err != nil {
@@ -138,21 +135,6 @@ func RunService() {
 	registerShutdownHooks()
 
 	server.StartServer(app, "http.server.bind")
-}
-
-func GetConsulToken() (string, error) {
-	tokenPathValue := configloader.GetOrDefault("consul.token.path", nil)
-	if tokenPathValue == nil {
-		return "", fmt.Errorf("parameter consul.token.path is required but could not be found and no default value was provided")
-	}
-
-	tokenPath := fmt.Sprintf("%v", tokenPathValue)
-
-	tokenBytes, err := os.ReadFile(tokenPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read Consul token from file %s: %v. Consul is enabled but token file is not accessible", tokenPath, err)
-	}
-	return strings.TrimSpace(string(tokenBytes)), nil
 }
 
 func registerShutdownHooks() {

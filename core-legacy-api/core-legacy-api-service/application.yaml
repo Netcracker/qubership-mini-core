@@ -3,7 +3,6 @@ microservice:
   namespace: ${MICROSERVICE_NAMESPACE}
 
 consul.url: ${CONSUL_URL}
-consul.token.path : /var/run/secrets/consul-token/token
 
 http:
   server:
