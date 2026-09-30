@@ -42,7 +42,6 @@ func RunService() {
 	sources = podsecrets.AddPodSecretsPropertySource(sources)
 	configloader.InitWithSourcesArray(append(sources, consulPS))
 
-	configloader.InitWithSourcesArray(sources)
 	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {
 	})
 
