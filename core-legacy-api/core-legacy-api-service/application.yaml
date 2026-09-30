@@ -8,3 +8,5 @@ http:
   server:
     bind: ":8080"
 
+baseline.fetch.properties: tenant.default.id,bss.tenant.default-id
+

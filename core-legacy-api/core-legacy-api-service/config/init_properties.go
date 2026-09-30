@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	qubersecurity "github.com/netcracker/qubership-core-lib-go/v3/security"
+	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 )
 
 const defaultPropertiesMarkerKey = "default_properties_initialized"
@@ -159,8 +162,7 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 	if strings.TrimSpace(baselineProj) == "" {
 		return nil
 	}
-
-	baselineFetchProperties := []string{"tenant.default.id", "bss.tenant.default-id"}
+	baselineFetchProperties := configloader.GetOrDefault("baseline.fetch.properties", "")
 
 	// Fetch global/default from the baseline Config Server.
 	baselineProps, err := getBaselineProperties(
@@ -176,7 +178,7 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 	// Select only properties configured in BASELINE_FETCH_PROPERTIES.
 	propertiesToMigrate := make(map[string]string)
 
-	for _, property := range baselineFetchProperties {
+	for _, property := range baselineFetchProperties.([]string) {
 		if value, exists := baselineProps[property]; exists {
 			propertiesToMigrate[property] = value
 		}
@@ -202,7 +204,7 @@ func getBaselineProperties(
 ) (map[string]string, error) {
 	url := fmt.Sprintf(
 		"http://config-server.%s:8080/%s/%s",
-		baselineProj,
+		"core-dev-9",
 		app,
 		profile,
 	)
@@ -213,14 +215,22 @@ func getBaselineProperties(
 		url,
 		nil,
 	)
+
+	tokenProvider := serviceloader.MustLoad[qubersecurity.TokenProvider]()
+	token, err := tokenProvider.GetToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
