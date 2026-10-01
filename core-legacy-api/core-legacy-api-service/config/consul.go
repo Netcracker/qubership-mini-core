@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
-	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 )
-
-var logger = logging.GetLogger("ConsulService")
 
 const consulPropertiesSource = "consul"
 const consulConfigPrefix = "config"
@@ -23,7 +21,7 @@ const consulTxOperationLimit = 64
 const txnMaxReqLen = 512 * 1024
 
 func NewConsulService(client *api.Client, namespace string) ConfigService {
-	return &consulService{client, namespace}
+	return &consulService{client, namespace, logging.GetLogger("ConsulService")}
 }
 
 func (s *consulService) AddProperties(ctx context.Context, application string, profile string, properties map[string]string) error {
@@ -42,27 +40,27 @@ func (s *consulService) AddProperties(ctx context.Context, application string, p
 }
 
 func (s *consulService) performTransaction(ctx context.Context, operation api.TxnOps) error {
-	logger.InfoC(ctx, "Executing Consul transaction with %d operations", len(operation))
+	s.logger.InfoC(ctx, "Executing Consul transaction with %d operations", len(operation))
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	ok, resp, _, err := s.consul.Txn().Txn(operation, queryOptions) //TODO: transaction?
 	if err != nil {
 		if ctx.Err() != nil {
-			logger.ErrorC(ctx, "Consul transaction cancelled: %v", ctx.Err())
+			s.logger.ErrorC(ctx, "Consul transaction cancelled: %v", ctx.Err())
 			return ctx.Err()
 		}
-		logger.ErrorC(ctx, "Failed to execute Consul transaction: %v", err.Error())
+		s.logger.ErrorC(ctx, "Failed to execute Consul transaction: %v", err.Error())
 		return ErrConsul{
 			Message: err.Error(),
 		}
 	}
 
 	if !ok {
-		logger.ErrorC(ctx, "Consul transaction was rejected")
+		s.logger.ErrorC(ctx, "Consul transaction was rejected")
 
 		var reasons []string
 		if resp != nil {
 			for _, e := range resp.Errors {
-				logger.ErrorC(ctx, "Transaction error: OpIndex=%d, What=%s", e.OpIndex, e.What)
+				s.logger.ErrorC(ctx, "Transaction error: OpIndex=%d, What=%s", e.OpIndex, e.What)
 				reasons = append(reasons, fmt.Sprintf("OpIndex=%d, What=%s", e.OpIndex, e.What))
 			}
 		}
@@ -72,7 +70,7 @@ func (s *consulService) performTransaction(ctx context.Context, operation api.Tx
 		}
 	}
 
-	logger.InfoC(ctx, "Consul transaction completed successfully")
+	s.logger.InfoC(ctx, "Consul transaction completed successfully")
 
 	return nil
 }
@@ -83,7 +81,7 @@ func (s *consulService) FindAll(ctx context.Context) ([]model.ConfigProfile, err
 	// Get all KV pairs under the prefix.
 	pairs, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
-		logger.ErrorC(ctx, "Failed to list KV pairs under prefix=%s: %v", prefix, err)
+		s.logger.ErrorC(ctx, "Failed to list KV pairs under prefix=%s: %v", prefix, err)
 		return nil, err
 	}
 
@@ -91,7 +89,7 @@ func (s *consulService) FindAll(ctx context.Context) ([]model.ConfigProfile, err
 
 	profiles := buildConfigProfiles(propertiesByApp, prefix)
 
-	logger.Infof("Found %d config profiles", len(profiles))
+	s.logger.Infof("Found %d config profiles", len(profiles))
 
 	return profiles, nil
 
@@ -106,7 +104,7 @@ func (s *consulService) FindByApplicationAndProfile(
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	properties, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
-		logger.ErrorC(ctx, "Failed to list KV pairs for application=%s, profile=%s: %v", appName, profileName, err)
+		s.logger.ErrorC(ctx, "Failed to list KV pairs for application=%s, profile=%s: %v", appName, profileName, err)
 		return model.ConfigProfile{}, err
 	}
 	return model.ConfigProfile{
@@ -123,7 +121,7 @@ func (s *consulService) DeleteProfile(ctx context.Context, application string, p
 	writeOptions := (&api.WriteOptions{}).WithContext(ctx)
 	_, err := s.consul.KV().DeleteTree(prefix, writeOptions)
 	if err != nil {
-		logger.ErrorC(ctx, "Failed to delete profile tree for application=%s, profile=%s: %v", application, profile, err)
+		s.logger.ErrorC(ctx, "Failed to delete profile tree for application=%s, profile=%s: %v", application, profile, err)
 	}
 	return err
 }
@@ -154,4 +152,5 @@ func (e ErrConsul) Error() string {
 type consulService struct {
 	consul    *api.Client
 	namespace string
+	logger    logging.Logger
 }
