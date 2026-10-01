@@ -65,14 +65,14 @@ func RunService() {
 
 	if err != nil {
 		logger.Errorf("Couldn't create Consul client: %w", err)
-		return
+		panic(err)
 	}
 	consulService := config.NewConsulService(consulClient, namespace)
 	healthService, err := health.NewHealthService()
 
 	if err != nil {
 		logger.Error("Couldn't create healthService")
-		return
+		panic(err)
 	}
 	healthService.AddCheck("ConsulCheck", func() health.Status {
 		_, err := consulClient.Status().Leader()
@@ -93,7 +93,7 @@ func RunService() {
 
 	if err != nil {
 		logger.Errorf("Error while create app because: %s", err.Error())
-		return
+		panic(err)
 	}
 	app.Use(func(c *fiber.Ctx) error {
 		requestHeaders := map[string]interface{}{}
