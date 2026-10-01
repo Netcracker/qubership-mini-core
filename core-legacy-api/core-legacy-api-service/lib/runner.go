@@ -68,12 +68,21 @@ func RunService() {
 		return
 	}
 	consulService := config.NewConsulService(consulClient, namespace)
-
 	healthService, err := health.NewHealthService()
+
 	if err != nil {
 		logger.Error("Couldn't create healthService")
 		return
 	}
+	healthService.AddCheck("ConsulCheck", func() health.Status {
+		_, err := consulClient.Status().Leader()
+		if err != nil {
+			return health.Status{Name: health.StatusProblem, Details: map[string]interface{}{
+				"error": err.Error(),
+			}}
+		}
+		return health.Status{Name: health.StatusUp}
+	})
 
 	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
 		WithHealth("/health", healthService).
