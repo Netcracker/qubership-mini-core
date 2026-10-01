@@ -162,7 +162,11 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 	if strings.TrimSpace(baselineProj) == "" {
 		return nil
 	}
-	baselineFetchProperties := configloader.GetOrDefault("baseline.fetch.properties", "")
+	baselineFetchProperties := strings.Split(configloader.GetOrDefaultString("baseline.fetch.properties", ""), ",")
+
+	logger.InfoC(ctx, "Starting baseline properties initialization")
+	logger.InfoC(ctx, "Baseline project: %q", baselineProj)
+	logger.InfoC(ctx, "Properties configured for migration: %v", baselineFetchProperties)
 
 	// Fetch global/default from the baseline Config Server.
 	baselineProps, err := getBaselineProperties(
@@ -178,8 +182,9 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 	// Select only properties configured in BASELINE_FETCH_PROPERTIES.
 	propertiesToMigrate := make(map[string]string)
 
-	for _, property := range baselineFetchProperties.([]string) {
+	for _, property := range baselineFetchProperties {
 		if value, exists := baselineProps[property]; exists {
+			logger.DebugC(ctx, "Selected baseline property for migration: %s", property)
 			propertiesToMigrate[property] = value
 		}
 	}
@@ -204,7 +209,7 @@ func getBaselineProperties(
 ) (map[string]string, error) {
 	url := fmt.Sprintf(
 		"http://config-server.%s:8080/%s/%s",
-		"core-dev-9",
+		baselineProj,
 		app,
 		profile,
 	)
@@ -249,6 +254,8 @@ func getBaselineProperties(
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, err
 	}
+
+	logger.InfoC(ctx, "Baseline response contains %d property sources", len(response.PropertySources))
 
 	if len(response.PropertySources) == 0 {
 		return map[string]string{}, nil
