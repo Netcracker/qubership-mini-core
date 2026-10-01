@@ -6,6 +6,9 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o core-
 
 FROM ghcr.io/netcracker/qubership-core-base:alpine-2.5.5@sha256:1e207c43e907165f9c55838bb853465357a28bfd50799cf4aa66b959fe72a836 AS run
 COPY --chown=10001:0 --chmod=555 --from=build /app/core-legacy-api /app/core-legacy-api
-COPY --chown=10001:0 --chmod=444 --from=build /app/application.yaml /app/policies.conf /app/
+COPY --chown=10001:0 --chmod=444 --from=build /app/application.yaml /app/
+COPY --chown=10001:0 --chmod=444 --from=build app/docs/swagger.json /app/
+COPY --chown=10001:0 --chmod=444 --from=build app/docs/swagger.yaml /app/
+
 WORKDIR /app
 CMD ["/app/core-legacy-api"]
