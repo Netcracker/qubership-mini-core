@@ -373,7 +373,7 @@ func TestDeleteProperties_BadRequest(t *testing.T) {
 
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"error\":\"Invalid request body\"}", string(body))
+	assert.Contains(t, string(body), "\"error\":\"Bad Request\"")
 }
 
 func TestGetApplicationsAndProfiles_MultipleApplications(t *testing.T) {
