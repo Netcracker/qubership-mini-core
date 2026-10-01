@@ -10,9 +10,12 @@ import (
 	"time"
 
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	qubersecurity "github.com/netcracker/qubership-core-lib-go/v3/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 )
+
+var logger = logging.GetLogger("Initialization")
 
 const defaultPropertiesMarkerKey = "default_properties_initialized"
 
