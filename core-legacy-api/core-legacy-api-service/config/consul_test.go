@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
-
 	"github.com/hashicorp/consul/api"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

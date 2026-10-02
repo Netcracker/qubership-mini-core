@@ -52,7 +52,7 @@ func RunService() {
 
 	u, err := url.Parse(consulURL)
 	if err != nil {
-		logger.Errorf("invalid consul.url %q: %w", consulURL, err)
+		logger.Errorf("invalid consul.url %q: %v", consulURL, err)
 		return
 	}
 
@@ -64,7 +64,7 @@ func RunService() {
 	consulClient, err := api.NewClient(conf)
 
 	if err != nil {
-		logger.Errorf("Couldn't create Consul client: %w", err)
+		logger.Errorf("Couldn't create Consul client: %v", err)
 		panic(err)
 	}
 	consulService := config.NewConsulService(consulClient, namespace)
