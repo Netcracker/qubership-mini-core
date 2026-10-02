@@ -557,7 +557,7 @@ func buildConfigProfiles(
 			Version:     0,
 			Properties: toConfigProperties(
 				propertiesByApp[app],
-				prefix+"/"+app,
+				prefix+app,
 			),
 		})
 	}
