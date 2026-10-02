@@ -118,7 +118,6 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 	}
 
 	if resolvePlaceholders {
-		var err error
 		err = resolveProperties(properties)
 		if err != nil {
 			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
@@ -159,7 +158,6 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 	}
 
 	if resolvePlaceholders {
-		var err error
 		err = resolveProperties(properties)
 		if err != nil {
 			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
@@ -205,7 +203,6 @@ func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 	}
 
 	if resolvePlaceholders {
-		var err error
 		err = resolveProperties(properties)
 		if err != nil {
 			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
