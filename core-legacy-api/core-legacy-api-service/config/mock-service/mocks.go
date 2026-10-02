@@ -5,7 +5,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 	gomock "go.uber.org/mock/gomock"
 )
 

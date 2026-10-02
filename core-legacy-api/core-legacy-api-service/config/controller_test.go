@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	config "github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config/mock-service"
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
+	config "github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config/mock-service"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"

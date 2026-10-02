@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/tracing"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/podsecrets-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/hashicorp/consul/api"
@@ -23,7 +23,7 @@ import (
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/ctxmanager"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/docs"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/docs"
 )
 
 var (
