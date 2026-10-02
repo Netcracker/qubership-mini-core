@@ -499,11 +499,17 @@ func resolvePropertyValue(value string, properties map[string]model.ConfigProper
 	sb.WriteString(value[last:])
 	return sb.String(), nil
 }
-
 func buildPropertiesText(properties map[string]model.ConfigProperty) string {
+	keys := make([]string, 0, len(properties))
+	for key := range properties {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
 	var builder strings.Builder
 
-	for _, property := range properties {
+	for _, key := range keys {
+		property := properties[key]
 		builder.WriteString(property.Key)
 		builder.WriteString(": ")
 		builder.WriteString(property.Value)
