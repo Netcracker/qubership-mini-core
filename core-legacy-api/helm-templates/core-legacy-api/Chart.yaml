@@ -4,6 +4,10 @@ description: A Helm chart for the core-legacy-api microservice
 name: core-legacy-api
 # The effective version will be computed during Helm generation
 version: 0.0.1
+dependencies:
+  - name: coretpl
+    version: "0.2.3"
+    repository: "https://netcracker.github.io/qubership-core-bootstrap/"
 
 
 
