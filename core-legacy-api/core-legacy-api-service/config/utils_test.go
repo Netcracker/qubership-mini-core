@@ -1,10 +1,14 @@
 package config
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/consul/api"
 	"github.com/stretchr/testify/assert"
@@ -1116,6 +1120,49 @@ func TestBuildPropertiesText(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := buildPropertiesText(tt.properties)
 			tt.validate(t, result)
+		})
+	}
+}
+
+func TestGetFiberParam(t *testing.T) {
+	tests := []struct {
+		name     string
+		param    string
+		value    string
+		expected string
+	}{
+		{
+			name:     "returns normal parameter",
+			param:    "name",
+			value:    "test-app",
+			expected: "test-app",
+		},
+		{
+			name:     "unescapes parameter",
+			param:    "name",
+			value:    "test%2Fapp",
+			expected: "test/app",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := fiber.New()
+			app.Get("/:name", func(c *fiber.Ctx) error {
+				result := GetFiberParam(c, tt.param)
+
+				assert.Equal(t, tt.expected, result)
+				return nil
+			})
+
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/"+tt.value,
+				nil,
+			)
+
+			_, err := app.Test(req)
+			require.NoError(t, err)
 		})
 	}
 }
