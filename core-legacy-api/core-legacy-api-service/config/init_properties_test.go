@@ -57,8 +57,12 @@ func (s *ConsulServiceTestSuite) TestInitDefaultProperties() {
 	for appName, properties := range expected {
 		value, err := s.consulService.FindByApplicationAndProfile(s.ctx, appName, defaultProfileName)
 		s.Require().NoError(err)
+		actualKeys := make(map[string]struct{}, len(value.Properties))
+		for _, p := range value.Properties {
+			actualKeys[p.Key] = struct{}{}
+		}
 		for _, property := range properties {
-			s.Contains(value.Properties, property)
+			s.Contains(actualKeys, property, "application=%s missing key=%s", appName, property)
 		}
 	}
 }
