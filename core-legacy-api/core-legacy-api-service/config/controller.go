@@ -163,7 +163,7 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 			return RespondWithError(c, http.StatusBadRequest, "Bad Request")
 		}
 	}
-	c.Set("Content-Type", "text/plain")
+	c.Set("Content-Type", "text/plain; charset=utf-8")
 
 	return RespondWithProperties(c, http.StatusOK, buildPropertiesText(properties))
 }
