@@ -387,7 +387,7 @@ func TestFindOneProperties_OK(t *testing.T) {
 	resp, err := app.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "text/plain", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
