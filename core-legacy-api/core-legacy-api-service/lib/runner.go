@@ -84,12 +84,18 @@ func RunService() {
 		return health.Status{Name: health.StatusUp}
 	})
 
+	err = config.InitializeDefaultProperties(consulService, ctx)
+	if err != nil {
+		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
+		return
+	}
+
 	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
 		WithHealth("/health", healthService).
 		WithPrometheus("/prometheus").
 		WithTracer(tracing.NewZipkinTracer()).
 		WithApiVersion().
-		Process()
+		ProcessWithContext(ctx)
 
 	if err != nil {
 		logger.Errorf("Error while create app because: %s", err.Error())
@@ -107,11 +113,6 @@ func RunService() {
 		return c.Next()
 	})
 
-	err = config.InitializeDefaultProperties(consulService, ctx)
-	if err != nil {
-		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
-		return
-	}
 	configController := config.NewConfigPropertiesController(consulService)
 	// swagger
 	app.Get("/swagger-ui/swagger.json", func(ctx *fiber.Ctx) error {
