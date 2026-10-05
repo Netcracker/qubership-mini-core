@@ -18,11 +18,11 @@
       "CLOUD_PROTOCOL": "https",
       "CLOUD_PRIVATE_HOST": "",
       "CLOUD_PUBLIC_HOST": "",
-      "CLOUD_ADMIN_EMAIL": "TestTenantManagementGroup@netcracker.com",
+      "CLOUD_ADMIN_EMAIL": "TestTenantManagementGroup@qubership.org",
       "CPU_REQUEST": "100m",
       "CPU_LIMIT": "4",
-      "EMAIL_FROM": "no-reply@openshift.sdntest.netcracker",
-      "EMAIL_HOST": "iplanet.netcracker.com",
+      "EMAIL_FROM": "no-reply@openshift.sdntest.qubership",
+      "EMAIL_HOST": "mail.example.com",
       "EMAIL_PASSWORD": "",
       "EMAIL_USER": "",
       "IMAGE_REPOSITORY": "",
@@ -206,7 +206,7 @@
       "title": "The CLOUD_ADMIN_EMAIL schema",
       "description": "Cloud-admin Email address.",
       "examples": [
-        "TestTenantManagementGroup@netcracker.com"
+        "TestTenantManagementGroup@qubership.org"
       ],
       "internal": true
     },
@@ -244,7 +244,7 @@
       "title": "The EMAIL_FROM schema",
       "description": "Sender's email address.",
       "examples": [
-        "no-reply@openshift.sdntest.netcracker"
+        "no-reply@@openshift.sdntest.qubership"
       ]
     },
     "EMAIL_HOST": {
@@ -253,7 +253,7 @@
       "title": "The EMAIL_HOST schema",
       "description": "Email server host.",
       "examples": [
-        "iplanet.netcracker.com"
+        "mail.example.com"
       ]
     },
     "EMAIL_PASSWORD": {
