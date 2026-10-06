@@ -2,20 +2,27 @@
 MONITORING_ENABLED: true
 CLOUD_TOPOLOGY_KEY: kubernetes.io/hostname
 READONLY_CONTAINER_FILE_SYSTEM_ENABLED: true
+IMAGE_REPOSITORY: ''
 
 # ============== SERVICE VARIABLES ============================
 
 SERVICE_NAME: "core-legacy-api"
-SSL_SECRET: "defaultsslcertificate"
+
+TRACING_ENABLED: false
+TRACING_HOST: 'nc-diagnostic-agent'
+TRACING_SAMPLER_PROBABILISTIC: 0.01
+
 ALLOWED_HEADERS: ''
-CLOUD_ADMIN_EMAIL: ""
-EMAIL_FROM: ""
-EMAIL_HOST: ""
+CLOUD_ADMIN_EMAIL: "TestTenantManagementGroup@qubership.org"
+EMAIL_FROM: "no-reply@openshift.sdntest.qubership"
+EMAIL_HOST: "mail.example.com"
 EMAIL_PASSWORD: ''
 EMAIL_USER: ''
 
 HTTP_BUFFER_HEADER_MAX_SIZE: 10240
 
+K8S_SERVICE_TYPE: 'CLUSTER_IP'
 KUBERNETES_M2M_ENABLED: false
+
 
 
