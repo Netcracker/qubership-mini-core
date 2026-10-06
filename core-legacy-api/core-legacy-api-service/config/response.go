@@ -27,6 +27,7 @@ func RespondWithJson(c *fiber.Ctx, code int, payload interface{}) error {
 	return c.Status(code).JSON(payload)
 }
 func RespondWithProperties(c *fiber.Ctx, code int, payload string) error {
+	c.Set("Content-Type", "text/plain; charset=utf-8")
 	return c.Status(code).SendString(payload)
 }
 
