@@ -2,13 +2,12 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	qubersecurity "github.com/netcracker/qubership-core-lib-go/v3/security"
@@ -204,6 +203,7 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 		propertiesToMigrate,
 	)
 }
+
 func getBaselineProperties(
 	ctx context.Context,
 	baselineProj string,
@@ -217,35 +217,10 @@ func getBaselineProperties(
 		profile,
 	)
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		url,
-		nil,
-	)
-
 	tokenProvider := serviceloader.MustLoad[qubersecurity.TokenProvider]()
 	token, err := tokenProvider.GetToken(ctx)
 	if err != nil {
 		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf(
-			"baseline Config Server returned HTTP %d",
-			resp.StatusCode,
-		)
 	}
 
 	var response struct {
@@ -254,11 +229,30 @@ func getBaselineProperties(
 		} `json:"propertySources"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	client := resty.New().
+		SetTimeout(30 * time.Second)
+
+	resp, err := client.R().
+		SetContext(ctx).
+		SetHeader("Authorization", "Bearer "+token).
+		SetResult(&response).
+		Get(url)
+	if err != nil {
 		return nil, err
 	}
 
-	logger.InfoC(ctx, "Baseline response contains %d property sources", len(response.PropertySources))
+	if !resp.IsSuccess() {
+		return nil, fmt.Errorf(
+			"baseline Config Server returned HTTP %d",
+			resp.StatusCode(),
+		)
+	}
+
+	logger.InfoC(
+		ctx,
+		"Baseline response contains %d property sources",
+		len(response.PropertySources),
+	)
 
 	if len(response.PropertySources) == 0 {
 		return map[string]string{}, nil

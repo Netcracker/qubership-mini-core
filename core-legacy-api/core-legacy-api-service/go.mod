@@ -3,6 +3,7 @@ module github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api
 go 1.26.4
 
 require (
+	github.com/go-resty/resty/v2 v2.11.0
 	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/api v1.34.4
