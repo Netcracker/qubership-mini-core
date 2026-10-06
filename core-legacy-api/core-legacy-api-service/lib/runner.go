@@ -53,7 +53,7 @@ func RunService() {
 	u, err := url.Parse(consulURL)
 	if err != nil {
 		logger.Errorf("invalid consul.url %q: %v", consulURL, err)
-		return
+		panic(err)
 	}
 
 	conf := api.DefaultConfig()
@@ -87,7 +87,7 @@ func RunService() {
 	err = config.InitializeDefaultProperties(consulService, ctx)
 	if err != nil {
 		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
-		return
+		panic(err)
 	}
 
 	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
