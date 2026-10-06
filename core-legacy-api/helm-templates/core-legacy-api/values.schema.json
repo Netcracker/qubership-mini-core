@@ -404,20 +404,6 @@
       "description": "Consul URL",
       "internal": true
     },
-    "CONSUL_PUBLIC_URL": {
-      "$id": "#/properties/CONSUL_PUBLIC_URL",
-      "type": "string",
-      "title": "The CONSUL_PUBLIC_URL schema",
-      "description": "Consul public route",
-      "internal": true
-    },
-    "CONSUL_ADMIN_TOKEN": {
-      "$id": "#/properties/CONSUL_ADMIN_TOKEN",
-      "type": "string",
-      "title": "The CONSUL_ADMIN_TOKEN schema",
-      "description": "Consul admin token",
-      "internal": true
-    },
     "BASELINE_PROJ": {
       "$id": "#/properties/BASELINE_PROJ",
       "type": "string",
