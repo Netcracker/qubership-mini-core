@@ -45,10 +45,8 @@ func FiberErrorHandler(c *fiber.Ctx, err error) error {
 	default:
 		if fiberErr, ok := errors.AsType[*fiber.Error](err); ok {
 			statusCode = fiberErr.Code
-			message = fiberErr.Message
-			if message == "" {
-				message = formatHTTPStatusMessage(statusCode)
-			}
+			message = formatHTTPStatusMessage(statusCode)
+
 		}
 	}
 
