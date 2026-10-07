@@ -7,20 +7,18 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/tracing"
+	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2"
+	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/podsecrets-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
-	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
-	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2"
-	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/ctxmanager"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/docs"
 )
 
@@ -41,12 +39,9 @@ func RunService() {
 	sources = podsecrets.AddPodSecretsPropertySource(sources)
 	configloader.InitWithSourcesArray(append(sources, consulPS))
 
-	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {
-	})
+	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {})
 
-	consulService := config.NewConsulService()
-
-	err := config.InitializeDefaultProperties(consulService, ctx)
+	consulService, err := config.InitConsulConfiguration(ctx)
 	if err != nil {
 		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
 		panic(err)

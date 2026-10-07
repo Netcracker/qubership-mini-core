@@ -62,7 +62,7 @@ func (s *ConsulServiceTestSuite) SetupTest() {
 	require.NoError(s.T(), err)
 
 	s.consulClient = client
-	s.consulService = NewConsulService()
+	s.consulService = NewConsulService(client, namespace)
 }
 
 func (s *ConsulServiceTestSuite) TearDownTest() {

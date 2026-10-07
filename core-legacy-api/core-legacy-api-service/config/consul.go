@@ -23,16 +23,16 @@ const defaultProfileName = "default"
 const consulTxOperationLimit = 64
 const txnMaxReqLen = 512 * 1024
 
-func NewConsulService() *consulService {
-
-	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
+func NewConsulClientFromConfig() (*api.Client, error) {
 	consulURL := configloader.GetOrDefaultString("consul.url", "")
 	consulToken := configloader.GetOrDefaultString("consul.token", "")
+	if consulURL == "" {
+		return nil, fmt.Errorf("consul.url is empty")
+	}
 
 	u, err := url.Parse(consulURL)
 	if err != nil {
-		logger.Errorf("invalid consul.url %q: %v", consulURL, err)
-		panic(err)
+		return nil, fmt.Errorf("invalid consul.url %q: %w", consulURL, err)
 	}
 
 	conf := api.DefaultConfig()
@@ -41,13 +41,35 @@ func NewConsulService() *consulService {
 	conf.Token = consulToken
 
 	consulClient, err := api.NewClient(conf)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create Consul client: %w", err)
+	}
 
+	return consulClient, nil
+}
+
+func NewConsulService(client *api.Client, namespace string) *consulService {
+
+	return &consulService{client, namespace, logging.GetLogger("ConsulService")}
+}
+
+func NewConsulServiceFromConfig() *consulService {
+	client, err := NewConsulClientFromConfig()
 	if err != nil {
 		logger.Errorf("Couldn't create Consul client: %v", err)
 		panic(err)
 	}
 
-	return &consulService{consulClient, namespace, logging.GetLogger("ConsulService")}
+	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
+	return NewConsulService(client, namespace)
+}
+
+func InitConsulConfiguration(ctx context.Context) (*consulService, error) {
+	service := NewConsulServiceFromConfig()
+	if err := InitializeDefaultProperties(service, ctx); err != nil {
+		return nil, err
+	}
+	return service, nil
 }
 
 func (s *consulService) HealthCheck() health.Status {
