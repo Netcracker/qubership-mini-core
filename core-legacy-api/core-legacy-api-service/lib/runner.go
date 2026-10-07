@@ -83,8 +83,8 @@ func RunService() {
 	})
 
 	readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)
-	app.Get("/health", createHealthEndpoint(healthService))
-	app.Get("/readiness", createReadinessEndpoint(readinessService))
+	app.Get("/health", createProbeEndpoint(healthService))
+	app.Get("/readiness", createProbeEndpoint(readinessService))
 
 	configController := config.NewConfigPropertiesController(consulService)
 	// swagger
@@ -138,18 +138,8 @@ func registerShutdownHooks() {
 		}
 	}()
 }
-func createHealthEndpoint(service health.HealthService) fiber.Handler {
-	service.Start()
-	return func(c *fiber.Ctx) error {
-		result := service.GetHealth()
-		if result == nil {
-			return c.Status(http.StatusServiceUnavailable).JSON(map[string]interface{}{"status": "DOWN"})
-		}
-		return c.Status(result.GetStatusCode()).JSON(result.GetHealthMap())
-	}
-}
 
-func createReadinessEndpoint(service health.HealthService) fiber.Handler {
+func createProbeEndpoint(service health.HealthService) fiber.Handler {
 	service.Start()
 	return func(c *fiber.Ctx) error {
 		result := service.GetHealth()
