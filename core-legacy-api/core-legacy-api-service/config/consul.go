@@ -3,8 +3,11 @@ package config
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
+	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
@@ -20,8 +23,41 @@ const defaultProfileName = "default"
 const consulTxOperationLimit = 64
 const txnMaxReqLen = 512 * 1024
 
-func NewConsulService(client *api.Client, namespace string) ConfigService {
-	return &consulService{client, namespace, logging.GetLogger("ConsulService")}
+func NewConsulService() *consulService {
+
+	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
+	consulURL := configloader.GetOrDefaultString("consul.url", "")
+	consulToken := configloader.GetOrDefaultString("consul.token", "")
+
+	u, err := url.Parse(consulURL)
+	if err != nil {
+		logger.Errorf("invalid consul.url %q: %v", consulURL, err)
+		panic(err)
+	}
+
+	conf := api.DefaultConfig()
+	conf.Address = u.Host
+	conf.Scheme = u.Scheme
+	conf.Token = consulToken
+
+	consulClient, err := api.NewClient(conf)
+
+	if err != nil {
+		logger.Errorf("Couldn't create Consul client: %v", err)
+		panic(err)
+	}
+
+	return &consulService{consulClient, namespace, logging.GetLogger("ConsulService")}
+}
+
+func (s *consulService) HealthCheck() health.Status {
+	_, err := s.consul.Status().Leader()
+	if err != nil {
+		return health.Status{Name: health.StatusProblem, Details: map[string]interface{}{
+			"error": err.Error(),
+		}}
+	}
+	return health.Status{Name: health.StatusUp}
 }
 
 func (s *consulService) AddProperties(ctx context.Context, application string, profile string, properties map[string]string) error {

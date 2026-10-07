@@ -3,7 +3,6 @@ package lib
 import (
 	"context"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,7 +15,6 @@ import (
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/hashicorp/consul/api"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
 	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2"
 	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
@@ -46,47 +44,22 @@ func RunService() {
 	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {
 	})
 
-	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
-	consulURL := configloader.GetOrDefaultString("consul.url", "")
-	consulToken := configloader.GetOrDefaultString("consul.token", "")
+	consulService := config.NewConsulService()
 
-	u, err := url.Parse(consulURL)
+	err := config.InitializeDefaultProperties(consulService, ctx)
 	if err != nil {
-		logger.Errorf("invalid consul.url %q: %v", consulURL, err)
+		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
 		panic(err)
 	}
 
-	conf := api.DefaultConfig()
-	conf.Address = u.Host
-	conf.Scheme = u.Scheme
-	conf.Token = consulToken
-
-	consulClient, err := api.NewClient(conf)
-
-	if err != nil {
-		logger.Errorf("Couldn't create Consul client: %v", err)
-		panic(err)
-	}
-	consulService := config.NewConsulService(consulClient, namespace)
 	healthService, err := health.NewHealthService()
-
 	if err != nil {
 		logger.Error("Couldn't create healthService")
 		panic(err)
 	}
-	healthService.AddCheck("ConsulCheck", func() health.Status {
-		_, err := consulClient.Status().Leader()
-		if err != nil {
-			return health.Status{Name: health.StatusProblem, Details: map[string]interface{}{
-				"error": err.Error(),
-			}}
-		}
-		return health.Status{Name: health.StatusUp}
-	})
-
-	err = config.InitializeDefaultProperties(consulService, ctx)
+	readinessService, err := health.NewHealthService()
 	if err != nil {
-		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
+		logger.Error("Couldn't create readinessService")
 		panic(err)
 	}
 
@@ -95,9 +68,9 @@ func RunService() {
 		ErrorHandler: config.FiberErrorHandler,
 	}).
 		WithHealth("/health", healthService).
+		WithHealth("/readiness", readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)).
 		WithPrometheus("/prometheus").
 		WithTracer(tracing.NewZipkinTracer()).
-		WithApiVersion().
 		ProcessWithContext(ctx)
 
 	if err != nil {
