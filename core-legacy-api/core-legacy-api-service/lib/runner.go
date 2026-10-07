@@ -62,8 +62,6 @@ func RunService() {
 		Network:      fiber.NetworkTCP,
 		ErrorHandler: config.FiberErrorHandler,
 	}).
-		WithHealth("/health", healthService).
-		WithHealth("/readiness", readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)).
 		WithPrometheus("/prometheus").
 		WithTracer(tracing.NewZipkinTracer()).
 		ProcessWithContext(ctx)
@@ -83,6 +81,10 @@ func RunService() {
 		c.SetUserContext(ctx)
 		return c.Next()
 	})
+
+	readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)
+	app.Get("/health", createHealthEndpoint(healthService))
+	app.Get("/readiness", createReadinessEndpoint(readinessService))
 
 	configController := config.NewConfigPropertiesController(consulService)
 	// swagger
@@ -135,4 +137,25 @@ func registerShutdownHooks() {
 			hook()
 		}
 	}()
+}
+func createHealthEndpoint(service health.HealthService) fiber.Handler {
+	service.Start()
+	return func(c *fiber.Ctx) error {
+		result := service.GetHealth()
+		if result == nil {
+			return c.Status(http.StatusServiceUnavailable).JSON(map[string]interface{}{"status": "DOWN"})
+		}
+		return c.Status(result.GetStatusCode()).JSON(result.GetHealthMap())
+	}
+}
+
+func createReadinessEndpoint(service health.HealthService) fiber.Handler {
+	service.Start()
+	return func(c *fiber.Ctx) error {
+		result := service.GetHealth()
+		if result == nil {
+			return c.Status(http.StatusServiceUnavailable).JSON(map[string]interface{}{"status": "DOWN"})
+		}
+		return c.Status(result.GetStatusCode()).JSON(result.GetHealthMap())
+	}
 }
