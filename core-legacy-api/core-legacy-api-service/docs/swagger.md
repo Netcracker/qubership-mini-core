@@ -10,7 +10,7 @@ Run generator from project root (module containing the main entrypoint):
 
 ```bash
 cd core-legacy-api-service
-swag init -g cmd/core-legacy-api-service/main.go
+swag init -g cmd/core-legacy-api-service/server.go
 ```
 
-This project already includes Swagger annotations in `cmd/core-legacy-api-service/main.go` and `config/controller.go`. After running `swag init` the generated docs will appear under `docs/` (e.g. `docs/swagger.json`, `docs/swagger.yaml`, `docs/docs.go`).
+This project already includes Swagger annotations in `cmd/core-legacy-api-service/server.go` and `config/controller.go`. After running `swag init` the generated docs will appear under `docs/` (e.g. `docs/swagger.json`, `docs/swagger.yaml`, `docs/docs.go`).
