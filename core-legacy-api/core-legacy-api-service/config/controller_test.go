@@ -50,7 +50,9 @@ func TestGetApplicationsAndProfiles_OK(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
 	defer app.ReleaseCtx(ctx)
 
@@ -73,20 +75,21 @@ func TestGetApplicationsAndProfiles_InternalServerError(t *testing.T) {
 		FindAll(gomock.Any()).
 		Return(nil, errors.New("failed to get applications"))
 
-	app := fiber.New()
-	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
-	defer app.ReleaseCtx(ctx)
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Get("/:applications", controller.GetApplicationsAndProfiles)
 
-	err := controller.GetApplicationsAndProfiles(ctx)
+	req := httptest.NewRequest(http.MethodGet, "/applications", nil)
 
-	if err != nil {
-		t.Errorf("GetApplicationsAndProfiles() has got error = %v", err)
-	}
+	resp, err := app.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
-	response := ctx.Response()
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
 
-	assert.Equal(t, http.StatusInternalServerError, response.StatusCode())
-	assert.Contains(t, string(response.Body()), "\"error\":\"Internal Server Error\"")
+	assert.Contains(t, string(body), "\"error\":\"Internal Server Error\"")
 }
 
 func TestFindOne_OK(t *testing.T) {
@@ -123,7 +126,9 @@ func TestFindOne_OK(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:application/:profile", controller.FindOne)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app/default", nil)
@@ -149,7 +154,9 @@ func TestFindOne_InternalServerError(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
 		Return(model.ConfigProfile{}, errors.New("failed to find global profile"))
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:application/:profile", controller.FindOne)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app/default", nil)
@@ -206,7 +213,9 @@ func TestFindOneJSON_OK(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.json", nil)
@@ -242,7 +251,9 @@ func TestFindOneJSON_InternalServerError(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
 		Return(model.ConfigProfile{}, errors.New("failed to find global profile"))
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles", controller.FindOneJSON)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.json", nil)
@@ -299,7 +310,9 @@ func TestFindOneYaml_OK(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles.yaml", controller.FindOneYaml)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.yaml", nil)
@@ -331,7 +344,9 @@ func TestFindOneYaml_InternalServerError(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
 		Return(model.ConfigProfile{}, errors.New("failed to find global profile"))
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles", controller.FindOneYaml)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.yaml", nil)
@@ -379,7 +394,9 @@ func TestFindOneProperties_OK(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles.properties", controller.FindOneProperties)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.properties", nil)
@@ -403,7 +420,9 @@ func TestFindOneProperties_InternalServerError(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
 		Return(model.ConfigProfile{}, errors.New("failed to find global profile"))
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles", controller.FindOneProperties)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.properties", nil)
@@ -431,7 +450,9 @@ func TestAddProperties_OK(t *testing.T) {
 		AddProperties(gomock.Any(), "test-app", "default", properties).
 		Return(nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Post("/:application/:profile", controller.AddProperties)
 
 	body := `{
@@ -451,7 +472,9 @@ func TestAddProperties_BadRequest(t *testing.T) {
 	controller, _, ctrl := newTestController(t)
 	defer ctrl.Finish()
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Post("/:application/:profile", controller.AddProperties)
 
 	req := httptest.NewRequest(
@@ -479,7 +502,9 @@ func TestDeleteProperties_OK(t *testing.T) {
 		DeleteProperties(gomock.Any(), "test-app", "default", properties).
 		Return(nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Delete("/:application/:profile", controller.DeleteProperties)
 
 	body := `[
@@ -507,7 +532,9 @@ func TestDeleteProfile_OK(t *testing.T) {
 		DeleteProfile(gomock.Any(), "test-app", "default").
 		Return(nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Delete("/:application/:profile", controller.DeleteProperties)
 
 	req := httptest.NewRequest(
@@ -525,7 +552,9 @@ func TestDeleteProperties_BadRequest(t *testing.T) {
 	controller, _, ctrl := newTestController(t)
 	defer ctrl.Finish()
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Delete("/:application/:profile", controller.DeleteProperties)
 
 	req := httptest.NewRequest(
@@ -566,7 +595,9 @@ func TestGetApplicationsAndProfiles_MultipleApplications(t *testing.T) {
 		FindAll(gomock.Any()).
 		Return(profiles, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
 	defer app.ReleaseCtx(ctx)
 
@@ -615,7 +646,9 @@ func TestFindOne_WithMultipleProfiles(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "dev").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:application/:profile", controller.FindOne)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app/dev", nil)
@@ -654,7 +687,9 @@ func TestFindOne_WithoutLabel(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:application/:profile", controller.FindOne)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app/default", nil)
@@ -703,7 +738,9 @@ func TestFindOneJSON_WithResolvePlaceholders_False(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.json?resolvePlaceholders=false", nil)
@@ -753,7 +790,9 @@ func TestFindOneJSON_WithResolvePlaceholders_True(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.json?resolvePlaceholders=true", nil)
@@ -804,7 +843,9 @@ func TestFindOneProperties_WithResolvePlaceholders(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "default").
 		Return(appProfile, nil)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
 	app.Get("/:nameAndProfiles.properties", controller.FindOneProperties)
 
 	req := httptest.NewRequest(http.MethodGet, "/test-app-default.properties?resolvePlaceholders=true", nil)

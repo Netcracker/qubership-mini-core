@@ -90,7 +90,10 @@ func RunService() {
 		panic(err)
 	}
 
-	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
+	app, err := fiberserver.New(fiber.Config{
+		Network:      fiber.NetworkTCP,
+		ErrorHandler: config.FiberErrorHandler,
+	}).
 		WithHealth("/health", healthService).
 		WithPrometheus("/prometheus").
 		WithTracer(tracing.NewZipkinTracer()).

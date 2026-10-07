@@ -219,10 +219,6 @@ func (s *ConsulServiceTestSuite) TestFailureOnBigProperty() {
 
 	err := s.consulService.AddProperties(context.Background(), application, profile, properties)
 	require.Error(s.T(), err)
-
-	var consulErr ErrConsul
-	require.ErrorAs(s.T(), err, &consulErr)
-
 	kv, _, kvErr := s.consulClient.KV().Get("config/test-ns/test-app/my/lovely/key", nil)
 	require.NoError(s.T(), kvErr)
 	assert.Nil(s.T(), kv)

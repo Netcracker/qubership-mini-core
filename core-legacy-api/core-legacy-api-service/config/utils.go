@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/google/uuid"
@@ -563,17 +565,25 @@ func buildConfigProfiles(
 func marshalWithSingleQuotes(v interface{}) ([]byte, error) {
 	// First marshal normally to get a Node tree
 	var node yaml.Node
+
 	tmp, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal value: %w", err)
 	}
+
 	if err := yaml.Unmarshal(tmp, &node); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal YAML into node: %w", err)
 	}
+
 	// Walk the tree and convert double-quoted scalars to single-quoted
 	forceSingleQuotes(&node)
 
-	return yaml.Marshal(&node)
+	result, err := yaml.Marshal(&node)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal YAML node: %w", err)
+	}
+
+	return result, nil
 }
 
 func forceSingleQuotes(node *yaml.Node) {
@@ -605,4 +615,10 @@ func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error
 	profiles := nameWithProfiles[idx+1:]
 
 	return application, profiles, nil
+}
+
+func LogError(log logging.Logger, ctx context.Context, format string, args ...any) error {
+	s := fmt.Errorf(format, args...)
+	log.ErrorC(ctx, "%s", s.Error())
+	return s
 }

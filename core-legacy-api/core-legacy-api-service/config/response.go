@@ -1,10 +1,17 @@
 package config
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+)
+
+var (
+	ErrBadRequest          = errors.New("Bad Request")
+	ErrNotFound            = errors.New("Not Found")
+	ErrInternalServerError = errors.New("Internal Server Error")
 )
 
 type ErrorResponse struct {
@@ -12,6 +19,40 @@ type ErrorResponse struct {
 	Status    int    `json:"status"`
 	Error     string `json:"error"`
 	Path      string `json:"path"`
+}
+
+func formatHTTPStatusMessage(code int) string {
+	if code == 0 {
+		return ErrInternalServerError.Error()
+	}
+	if msg := http.StatusText(code); msg != "" {
+		return msg
+	}
+	return ErrInternalServerError.Error()
+}
+
+func FiberErrorHandler(c *fiber.Ctx, err error) error {
+	statusCode := http.StatusInternalServerError
+	message := ErrInternalServerError.Error()
+
+	switch {
+	case errors.Is(err, ErrBadRequest):
+		statusCode = http.StatusBadRequest
+		message = ErrBadRequest.Error()
+	case errors.Is(err, ErrNotFound):
+		statusCode = http.StatusNotFound
+		message = ErrNotFound.Error()
+	default:
+		if fiberErr, ok := errors.AsType[*fiber.Error](err); ok {
+			statusCode = fiberErr.Code
+			message = fiberErr.Message
+			if message == "" {
+				message = formatHTTPStatusMessage(statusCode)
+			}
+		}
+	}
+
+	return RespondWithError(c, statusCode, message)
 }
 
 func RespondWithError(c *fiber.Ctx, code int, msg string) error {

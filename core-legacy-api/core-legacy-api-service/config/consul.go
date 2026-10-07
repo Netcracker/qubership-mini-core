@@ -32,11 +32,14 @@ func (s *consulService) AddProperties(ctx context.Context, application string, p
 		op := &api.KVTxnOp{Verb: api.KVSet, Key: kvKey, Value: []byte(value)}
 
 		if err := batcher.add(op, calculateOperationSize(kvKey, value)); err != nil {
-			return err
+			return fmt.Errorf("failed to prepare property update for application=%s profile=%s key=%s: %w", application, profile, key, err)
 		}
 	}
 
-	return batcher.done()
+	if err := batcher.done(); err != nil {
+		return fmt.Errorf("failed to add properties for application=%s profile=%s: %w", application, profile, err)
+	}
+	return nil
 }
 
 func (s *consulService) performTransaction(ctx context.Context, operation api.TxnOps) error {
@@ -45,29 +48,19 @@ func (s *consulService) performTransaction(ctx context.Context, operation api.Tx
 	ok, resp, _, err := s.consul.Txn().Txn(operation, queryOptions) //TODO: transaction?
 	if err != nil {
 		if ctx.Err() != nil {
-			s.logger.ErrorC(ctx, "Consul transaction cancelled: %v", ctx.Err())
-			return ctx.Err()
+			return fmt.Errorf("consul transaction cancelled for context=%v: %w", ctx.Err(), ctx.Err())
 		}
-		s.logger.ErrorC(ctx, "Failed to execute Consul transaction: %v", err.Error())
-		return ErrConsul{
-			Message: err.Error(),
-		}
+		return fmt.Errorf("failed to execute Consul transaction: %w", err)
 	}
 
 	if !ok {
-		s.logger.ErrorC(ctx, "Consul transaction was rejected")
-
 		var reasons []string
 		if resp != nil {
 			for _, e := range resp.Errors {
-				s.logger.ErrorC(ctx, "Transaction error: OpIndex=%d, What=%s", e.OpIndex, e.What)
 				reasons = append(reasons, fmt.Sprintf("OpIndex=%d, What=%s", e.OpIndex, e.What))
 			}
 		}
-
-		return ErrConsul{
-			Message: strings.Join(reasons, "\n"),
-		}
+		return fmt.Errorf("consul transaction rejected: %s", strings.Join(reasons, "; "))
 	}
 
 	s.logger.InfoC(ctx, "Consul transaction completed successfully")
@@ -81,8 +74,7 @@ func (s *consulService) FindAll(ctx context.Context) ([]model.ConfigProfile, err
 	// Get all KV pairs under the prefix.
 	pairs, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
-		s.logger.ErrorC(ctx, "Failed to list KV pairs under prefix=%s: %v", prefix, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to list KV pairs under prefix=%s: %w", prefix, err)
 	}
 
 	propertiesByApp := groupPropertiesByApplication(pairs)
@@ -104,8 +96,7 @@ func (s *consulService) FindByApplicationAndProfile(
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	properties, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
-		s.logger.ErrorC(ctx, "Failed to list KV pairs for application=%s, profile=%s: %v", appName, profileName, err)
-		return model.ConfigProfile{}, err
+		return model.ConfigProfile{}, fmt.Errorf("failed to list KV pairs for application=%s profile=%s: %w", appName, profileName, err)
 	}
 	return model.ConfigProfile{
 		ID:          uuid.Nil,
@@ -121,9 +112,9 @@ func (s *consulService) DeleteProfile(ctx context.Context, application string, p
 	writeOptions := (&api.WriteOptions{}).WithContext(ctx)
 	_, err := s.consul.KV().DeleteTree(prefix, writeOptions)
 	if err != nil {
-		s.logger.ErrorC(ctx, "Failed to delete profile tree for application=%s, profile=%s: %v", application, profile, err)
+		return fmt.Errorf("failed to delete profile tree for application=%s profile=%s: %w", application, profile, err)
 	}
-	return err
+	return nil
 }
 
 func (s *consulService) DeleteProperties(ctx context.Context, application string, profile string, propertiesToDelete []string) error {
@@ -134,19 +125,14 @@ func (s *consulService) DeleteProperties(ctx context.Context, application string
 		op := &api.KVTxnOp{Verb: api.KVDelete, Key: kvKey}
 
 		if err := batcher.add(op, calculateOperationSize(kvKey, "")); err != nil {
-			return err
+			return fmt.Errorf("failed to prepare property deletion for application=%s profile=%s key=%s: %w", application, profile, key, err)
 		}
 	}
 
-	return batcher.done()
-}
-
-type ErrConsul struct {
-	Message string
-}
-
-func (e ErrConsul) Error() string {
-	return e.Message
+	if err := batcher.done(); err != nil {
+		return fmt.Errorf("failed to delete properties for application=%s profile=%s: %w", application, profile, err)
+	}
+	return nil
 }
 
 type consulService struct {
