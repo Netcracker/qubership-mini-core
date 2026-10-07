@@ -22,7 +22,7 @@ func init() {
 // @description Server you have a central place to manage external properties for applications
 // @description across all environments.
 
-//go:generate go run github.com/swaggo/swag/cmd/swag init --generalInfo server.go --parseDependency  --parseGoList=false --parseDepth 2
+//go:generate go run github.com/swaggo/swag/cmd/swag init --generalInfo cmd/core-legacy-api-service/main.go --parseDependency  --parseGoList=false --parseDepth 2
 
 func main() {
 	lib.RunService()
