@@ -64,6 +64,7 @@ func RunService() {
 	}).
 		WithPrometheus("/prometheus").
 		WithTracer(tracing.NewZipkinTracer()).
+		WithApiVersion().
 		ProcessWithContext(ctx)
 
 	if err != nil {
