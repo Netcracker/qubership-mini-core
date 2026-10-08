@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/consul/api"
+	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,6 +78,23 @@ func propertiesAsMap(profile model.ConfigProfile) map[string]string {
 		result[p.Key] = p.Value
 	}
 	return result
+}
+func (s *ConsulServiceTestSuite) TestHealthCheck() {
+	service := NewConsulService(s.consulClient, namespace)
+	status := service.HealthCheck()
+	assert.Equal(s.T(), health.StatusUp, status.Name)
+	assert.Nil(s.T(), status.Details)
+
+	cfg := api.DefaultConfig()
+	cfg.Address = "127.0.0.1:1"
+	client, err := api.NewClient(cfg)
+	require.NoError(s.T(), err)
+
+	status = NewConsulService(client, namespace).HealthCheck()
+	assert.Equal(s.T(), health.StatusProblem, status.Name)
+	if assert.Contains(s.T(), status.Details, "error") {
+		assert.NotEmpty(s.T(), status.Details["error"])
+	}
 }
 
 func (s *ConsulServiceTestSuite) TestDeleteProperties() {
