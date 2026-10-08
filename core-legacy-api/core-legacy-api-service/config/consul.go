@@ -3,16 +3,17 @@ package config
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
+	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
-	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 )
-
-var logger = logging.GetLogger("ConsulService")
 
 const consulPropertiesSource = "consul"
 const consulConfigPrefix = "config"
@@ -22,8 +23,63 @@ const defaultProfileName = "default"
 const consulTxOperationLimit = 64
 const txnMaxReqLen = 512 * 1024
 
-func NewConsulService(client *api.Client, namespace string) ConfigService {
-	return &consulService{client, namespace}
+func NewConsulClientFromConfig() (*api.Client, error) {
+	consulURL := configloader.GetOrDefaultString("consul.url", "")
+	consulToken := configloader.GetOrDefaultString("consul.token", "")
+	if consulURL == "" {
+		return nil, fmt.Errorf("consul.url is empty")
+	}
+
+	u, err := url.Parse(consulURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid consul.url %q: %w", consulURL, err)
+	}
+
+	conf := api.DefaultConfig()
+	conf.Address = u.Host
+	conf.Scheme = u.Scheme
+	conf.Token = consulToken
+
+	consulClient, err := api.NewClient(conf)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create Consul client: %w", err)
+	}
+
+	return consulClient, nil
+}
+
+func NewConsulService(client *api.Client, namespace string) *consulService {
+
+	return &consulService{client, namespace, logging.GetLogger("ConsulService")}
+}
+
+func NewConsulServiceFromConfig() *consulService {
+	client, err := NewConsulClientFromConfig()
+	if err != nil {
+		logger.Errorf("Couldn't create Consul client: %v", err)
+		panic(err)
+	}
+
+	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
+	return NewConsulService(client, namespace)
+}
+
+func InitConsulConfiguration(ctx context.Context) (*consulService, error) {
+	service := NewConsulServiceFromConfig()
+	if err := InitializeDefaultProperties(service, ctx); err != nil {
+		return nil, err
+	}
+	return service, nil
+}
+
+func (s *consulService) HealthCheck() health.Status {
+	_, err := s.consul.Status().Leader()
+	if err != nil {
+		return health.Status{Name: health.StatusProblem, Details: map[string]interface{}{
+			"error": err.Error(),
+		}}
+	}
+	return health.Status{Name: health.StatusUp}
 }
 
 func (s *consulService) AddProperties(ctx context.Context, application string, profile string, properties map[string]string) error {
@@ -34,64 +90,56 @@ func (s *consulService) AddProperties(ctx context.Context, application string, p
 		op := &api.KVTxnOp{Verb: api.KVSet, Key: kvKey, Value: []byte(value)}
 
 		if err := batcher.add(op, calculateOperationSize(kvKey, value)); err != nil {
-			return err
+			return fmt.Errorf("failed to prepare property update for application=%s profile=%s key=%s: %w", application, profile, key, err)
 		}
 	}
 
-	return batcher.done()
+	if err := batcher.done(); err != nil {
+		return fmt.Errorf("failed to add properties for application=%s profile=%s: %w", application, profile, err)
+	}
+	return nil
 }
 
 func (s *consulService) performTransaction(ctx context.Context, operation api.TxnOps) error {
-	logger.InfoC(ctx, "Executing Consul transaction with %d operations", len(operation))
+	s.logger.InfoC(ctx, "Executing Consul transaction with %d operations", len(operation))
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	ok, resp, _, err := s.consul.Txn().Txn(operation, queryOptions) //TODO: transaction?
 	if err != nil {
 		if ctx.Err() != nil {
-			logger.ErrorC(ctx, "Consul transaction cancelled: %v", ctx.Err())
-			return ctx.Err()
+			return fmt.Errorf("consul transaction cancelled for context=%v: %w", ctx.Err(), ctx.Err())
 		}
-		logger.ErrorC(ctx, "Failed to execute Consul transaction: %v", err.Error())
-		return ErrConsul{
-			Message: err.Error(),
-		}
+		return fmt.Errorf("failed to execute Consul transaction: %w", err)
 	}
 
 	if !ok {
-		logger.ErrorC(ctx, "Consul transaction was rejected")
-
 		var reasons []string
 		if resp != nil {
 			for _, e := range resp.Errors {
-				logger.ErrorC(ctx, "Transaction error: OpIndex=%d, What=%s", e.OpIndex, e.What)
 				reasons = append(reasons, fmt.Sprintf("OpIndex=%d, What=%s", e.OpIndex, e.What))
 			}
 		}
-
-		return ErrConsul{
-			Message: strings.Join(reasons, "\n"),
-		}
+		return fmt.Errorf("consul transaction rejected: %s", strings.Join(reasons, "; "))
 	}
 
-	logger.InfoC(ctx, "Consul transaction completed successfully")
+	s.logger.InfoC(ctx, "Consul transaction completed successfully")
 
 	return nil
 }
 
 func (s *consulService) FindAll(ctx context.Context) ([]model.ConfigProfile, error) {
-	prefix := consulConfigPrefix + "/" + s.namespace
+	prefix := consulConfigPrefix + "/" + s.namespace + "/"
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	// Get all KV pairs under the prefix.
 	pairs, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
-		logger.ErrorC(ctx, "Failed to list KV pairs under prefix=%s: %v", prefix, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to list KV pairs under prefix=%s: %w", prefix, err)
 	}
 
 	propertiesByApp := groupPropertiesByApplication(pairs)
 
 	profiles := buildConfigProfiles(propertiesByApp, prefix)
 
-	logger.Infof("Found %d config profiles", len(profiles))
+	s.logger.Infof("Found %d config profiles", len(profiles))
 
 	return profiles, nil
 
@@ -106,8 +154,7 @@ func (s *consulService) FindByApplicationAndProfile(
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	properties, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
-		logger.ErrorC(ctx, "Failed to list KV pairs for application=%s, profile=%s: %v", appName, profileName, err)
-		return model.ConfigProfile{}, err
+		return model.ConfigProfile{}, fmt.Errorf("failed to list KV pairs for application=%s profile=%s: %w", appName, profileName, err)
 	}
 	return model.ConfigProfile{
 		ID:          uuid.Nil,
@@ -123,9 +170,9 @@ func (s *consulService) DeleteProfile(ctx context.Context, application string, p
 	writeOptions := (&api.WriteOptions{}).WithContext(ctx)
 	_, err := s.consul.KV().DeleteTree(prefix, writeOptions)
 	if err != nil {
-		logger.ErrorC(ctx, "Failed to delete profile tree for application=%s, profile=%s: %v", application, profile, err)
+		return fmt.Errorf("failed to delete profile tree for application=%s profile=%s: %w", application, profile, err)
 	}
-	return err
+	return nil
 }
 
 func (s *consulService) DeleteProperties(ctx context.Context, application string, profile string, propertiesToDelete []string) error {
@@ -136,22 +183,18 @@ func (s *consulService) DeleteProperties(ctx context.Context, application string
 		op := &api.KVTxnOp{Verb: api.KVDelete, Key: kvKey}
 
 		if err := batcher.add(op, calculateOperationSize(kvKey, "")); err != nil {
-			return err
+			return fmt.Errorf("failed to prepare property deletion for application=%s profile=%s key=%s: %w", application, profile, key, err)
 		}
 	}
 
-	return batcher.done()
-}
-
-type ErrConsul struct {
-	Message string
-}
-
-func (e ErrConsul) Error() string {
-	return e.Message
+	if err := batcher.done(); err != nil {
+		return fmt.Errorf("failed to delete properties for application=%s profile=%s: %w", application, profile, err)
+	}
+	return nil
 }
 
 type consulService struct {
 	consul    *api.Client
 	namespace string
+	logger    logging.Logger
 }

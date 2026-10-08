@@ -18,11 +18,11 @@
       "CLOUD_PROTOCOL": "https",
       "CLOUD_PRIVATE_HOST": "",
       "CLOUD_PUBLIC_HOST": "",
-      "CLOUD_ADMIN_EMAIL": "TestTenantManagementGroup@netcracker.com",
+      "CLOUD_ADMIN_EMAIL": "TestTenantManagementGroup@qubership.org",
       "CPU_REQUEST": "100m",
       "CPU_LIMIT": "4",
-      "EMAIL_FROM": "no-reply@openshift.sdntest.netcracker",
-      "EMAIL_HOST": "iplanet.netcracker.com",
+      "EMAIL_FROM": "no-reply@openshift.sdntest.qubership",
+      "EMAIL_HOST": "mail.example.com",
       "EMAIL_PASSWORD": "",
       "EMAIL_USER": "",
       "IMAGE_REPOSITORY": "",
@@ -206,7 +206,7 @@
       "title": "The CLOUD_ADMIN_EMAIL schema",
       "description": "Cloud-admin Email address.",
       "examples": [
-        "TestTenantManagementGroup@netcracker.com"
+        "TestTenantManagementGroup@qubership.org"
       ],
       "internal": true
     },
@@ -244,7 +244,7 @@
       "title": "The EMAIL_FROM schema",
       "description": "Sender's email address.",
       "examples": [
-        "no-reply@openshift.sdntest.netcracker"
+        "no-reply@@openshift.sdntest.qubership"
       ]
     },
     "EMAIL_HOST": {
@@ -253,7 +253,7 @@
       "title": "The EMAIL_HOST schema",
       "description": "Email server host.",
       "examples": [
-        "iplanet.netcracker.com"
+        "mail.example.com"
       ]
     },
     "EMAIL_PASSWORD": {
@@ -397,54 +397,11 @@
       "description": "Name of a service.",
       "internal": true
     },
-    "CONSUL_ENABLED": {
-      "$id": "#/properties/CONSUL_ENABLED",
-      "$ref": "#/definitions/booleanOrString",
-      "description": "Consul is enabled",
-      "internal": true,
-      "title": "The CONSUL_ENABLED schema"
-    },
     "CONSUL_URL": {
       "$id": "#/properties/CONSUL_URL",
       "type": "string",
       "title": "The CONSUL_URL schema",
       "description": "Consul URL",
-      "internal": true
-    },
-    "CONSUL_PUBLIC_URL": {
-      "$id": "#/properties/CONSUL_PUBLIC_URL",
-      "type": "string",
-      "title": "The CONSUL_PUBLIC_URL schema",
-      "description": "Consul public route",
-      "internal": true
-    },
-    "CONSUL_ADMIN_TOKEN": {
-      "$id": "#/properties/CONSUL_ADMIN_TOKEN",
-      "type": "string",
-      "title": "The CONSUL_ADMIN_TOKEN schema",
-      "description": "Consul admin token",
-      "internal": true
-    },
-    "NC_DIAGNOSTIC_MODE": {
-      "$id": "#/properties/NC_DIAGNOSTIC_MODE",
-      "type": "string",
-      "title": "The NC_DIAGNOSTIC_MODE schema",
-      "description": "Type of CDT diagnostic mode",
-      "examples": [
-        "dev",
-        "prod",
-        "off"
-      ],
-      "internal": true
-    },
-    "NC_DIAGNOSTIC_AGENT_SERVICE": {
-      "$id": "#/properties/NC_DIAGNOSTIC_AGENT_SERVICE",
-      "type": "string",
-      "title": "The NC_DIAGNOSTIC_AGENT_SERVICE schema",
-      "description": "Diagnostic agent location",
-      "examples": [
-        "nc-diagnostic-agent"
-      ],
       "internal": true
     },
     "BASELINE_PROJ": {

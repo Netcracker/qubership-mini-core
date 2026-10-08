@@ -33,18 +33,8 @@ func (c *ConfigProfile) GetPropertiesAsMap() map[string]ConfigProperty {
 }
 
 type ConfigProperty struct {
-	ID        uuid.UUID `json:"id"`
-	Key       string    `json:"key"`
-	Value     string    `json:"value"`
-	Encrypted *bool     `json:"encrypted"`
-}
-
-// IsEncrypted returns false if Encrypted is nil.
-func (c *ConfigProperty) IsEncrypted() bool {
-	if c.Encrypted == nil {
-		return false
-	}
-	return *c.Encrypted
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type Environment struct {

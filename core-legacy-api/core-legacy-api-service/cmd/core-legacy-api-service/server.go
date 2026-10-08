@@ -1,11 +1,14 @@
 package main
 
 import (
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/lib"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/lib"
 
 	fiberSec "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/security"
 	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+
+	// memlimit sets memory limit = 0.9 of cgroup memory limit
+	_ "github.com/netcracker/qubership-core-lib-go/v3/memlimit"
 )
 
 func init() {
@@ -18,6 +21,8 @@ func init() {
 // @description This is the API documentation for the config-server. With the Config
 // @description Server you have a central place to manage external properties for applications
 // @description across all environments.
+
+//go:generate go run github.com/swaggo/swag/cmd/swag init --generalInfo cmd/core-legacy-api-service/server.go --parseDependency  --parseGoList=false --parseDepth 2
 
 func main() {
 	lib.RunService()

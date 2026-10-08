@@ -2,28 +2,24 @@ package lib
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
-	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
-	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
-
 	"github.com/gofiber/fiber/v2"
-	"github.com/hashicorp/consul/api"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
+	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/tracing"
 	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2"
 	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
+	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
+	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/podsecrets-propertysource"
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/ctxmanager"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/docs"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/docs"
 )
 
 var (
@@ -38,33 +34,42 @@ var (
 
 func RunService() {
 	ctxmanager.Register(baseproviders.Get())
-
 	consulPS := consul.NewLoggingPropertySource()
-	propertySources := configloader.BasePropertySources()
-	configloader.InitWithSourcesArray(append(propertySources, consulPS))
-	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {
-	})
+	sources := configloader.BasePropertySources()
+	sources = podsecrets.AddPodSecretsPropertySource(sources)
+	configloader.InitWithSourcesArray(append(sources, consulPS))
 
-	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
-	consulURL := configloader.GetOrDefaultString("consul.url", "")
-	consulToken, err := GetConsulToken()
+	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {})
+
+	consulService, err := config.InitConsulConfiguration(ctx)
 	if err != nil {
-		logger.Errorf("%s", err.Error())
-		return
+		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
+		panic(err)
 	}
 
 	healthService, err := health.NewHealthService()
 	if err != nil {
 		logger.Error("Couldn't create healthService")
+		panic(err)
+	}
+	readinessService, err := health.NewHealthService()
+	if err != nil {
+		logger.Error("Couldn't create readinessService")
+		panic(err)
 	}
 
-	app, err := fiberserver.New(fiber.Config{Network: fiber.NetworkTCP}).
-		WithHealth("/health", healthService).
+	app, err := fiberserver.New(fiber.Config{
+		Network:      fiber.NetworkTCP,
+		ErrorHandler: config.FiberErrorHandler,
+	}).
 		WithPrometheus("/prometheus").
-		Process()
+		WithTracer(tracing.NewZipkinTracer()).
+		WithApiVersion().
+		ProcessWithContext(ctx)
+
 	if err != nil {
 		logger.Errorf("Error while create app because: %s", err.Error())
-		return
+		panic(err)
 	}
 	app.Use(func(c *fiber.Ctx) error {
 		requestHeaders := map[string]interface{}{}
@@ -77,20 +82,11 @@ func RunService() {
 		c.SetUserContext(ctx)
 		return c.Next()
 	})
-	u, _ := url.Parse(consulURL)
 
-	conf := api.DefaultConfig()
-	conf.Address = u.Host
-	conf.Scheme = u.Scheme
-	conf.Token = consulToken
+	readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)
+	app.Get("/health", createProbeEndpoint(healthService))
+	app.Get("/readiness", createProbeEndpoint(readinessService))
 
-	consulClient, _ := api.NewClient(conf)
-	consulService := config.NewConsulService(consulClient, namespace)
-	err = config.InitializeDefaultProperties(consulService, ctx)
-	if err != nil {
-		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
-		return
-	}
 	configController := config.NewConfigPropertiesController(consulService)
 	// swagger
 	app.Get("/swagger-ui/swagger.json", func(ctx *fiber.Ctx) error {
@@ -98,15 +94,15 @@ func RunService() {
 		return ctx.Status(http.StatusOK).SendString(docs.SwaggerInfo.ReadDoc())
 	})
 	app.Get("/applications", configController.GetApplicationsAndProfiles)
-	app.Get("/:label/:name-:profiles.json", configController.FindOneJSON)
-	app.Get("/:label/:name-:profiles.properties", configController.FindOneProperties)
-	app.Get("/:label/:name-:profiles.yaml", configController.FindOneYaml)
-	app.Get("/:label/:name-:profiles.yml", configController.FindOneYaml)
+	app.Get("/:label/:nameAndProfiles.json", configController.FindOneJSON)
+	app.Get("/:label/:nameAndProfiles.properties", configController.FindOneProperties)
+	app.Get("/:label/:nameAndProfiles.yaml", configController.FindOneYaml)
+	app.Get("/:label/:nameAndProfiles.yml", configController.FindOneYaml)
 
-	app.Get("/:name-:profiles.json", configController.FindOneJSON)
-	app.Get("/:name-:profiles.properties", configController.FindOneProperties)
-	app.Get("/:name-:profiles.yaml", configController.FindOneYaml)
-	app.Get("/:name-:profiles.yml", configController.FindOneYaml)
+	app.Get("/:nameAndProfiles.json", configController.FindOneJSON)
+	app.Get("/:nameAndProfiles.properties", configController.FindOneProperties)
+	app.Get("/:nameAndProfiles.yaml", configController.FindOneYaml)
+	app.Get("/:nameAndProfiles.yml", configController.FindOneYaml)
 
 	app.Get("/:application/:profile", configController.FindOne)
 	app.Get("/:application/:profile/:label", configController.FindOne)
@@ -127,24 +123,6 @@ func RunService() {
 	server.StartServer(app, "http.server.bind")
 }
 
-func GetConsulToken() (string, error) {
-	tokenPathValue := configloader.GetOrDefault("consul.token.path", nil)
-	if tokenPathValue == nil {
-		return "", fmt.Errorf("Parameter %s is required but could not be found and no default value was provided", tokenPathValue)
-	}
-	var tokenPath string
-	if s, ok := tokenPathValue.(string); ok {
-		tokenPath = s
-	} else {
-		tokenPath = fmt.Sprintf("%v", tokenPath)
-	}
-	tokenBytes, err := os.ReadFile(tokenPath)
-	if err != nil {
-		return "", fmt.Errorf("Failed to read Consul token from file %s: %v. Consul is enabled but token file is not accessible.", tokenPath, err)
-	}
-	return strings.TrimSpace(string(tokenBytes)), nil
-}
-
 func registerShutdownHooks() {
 	go func() {
 		sigint := make(chan os.Signal, 1)
@@ -160,4 +138,15 @@ func registerShutdownHooks() {
 			hook()
 		}
 	}()
+}
+
+func createProbeEndpoint(service health.HealthService) fiber.Handler {
+	service.Start()
+	return func(c *fiber.Ctx) error {
+		result := service.GetHealth()
+		if result == nil {
+			return c.Status(http.StatusServiceUnavailable).JSON(map[string]interface{}{"status": "DOWN"})
+		}
+		return c.Status(result.GetStatusCode()).JSON(result.GetHealthMap())
+	}
 }

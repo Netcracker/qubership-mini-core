@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -8,9 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
@@ -49,9 +51,8 @@ func toConfigProperties(properties []*api.KVPair, prefix string) []model.ConfigP
 		}
 
 		result = append(result, model.ConfigProperty{
-			Key:       key,
-			Value:     value,
-			Encrypted: nil,
+			Key:   key,
+			Value: value,
 		})
 	}
 
@@ -203,33 +204,226 @@ func buildNestedProperties(properties map[string]model.ConfigProperty) map[strin
 	return result
 }
 
-func addNestedProperty(target map[string]interface{}, key string, value string) {
+// addNestedProperty adds a property as a nested map/list structure when
+// the key has a valid path. Otherwise, it keeps the key exactly as provided.
+//
+// Example:
+//
+//	"server.port" -> {"server": {"port": "8080"}}
+//	"items[0].name" -> {"items": [{"name": "..."}]}
+//	"invalid..key" -> {"invalid..key": "..."}
+func addNestedProperty(
+	target map[string]interface{},
+	key string,
+	value string,
+) {
+	pathTokens, ok := parsePropertyPath(key)
+	if !ok {
+		target[key] = value
+		return
+	}
 
-	parts := strings.Split(key, ".")
-	current := target
+	if _, ok := setNestedValue(target, pathTokens, value); !ok {
+		target[key] = value
+	}
+}
 
-	for i, part := range parts[:len(parts)-1] {
-		child, exists := current[part]
-		if !exists {
-			nested := make(map[string]interface{})
-			current[part] = nested
-			current = nested
+const maxListIndex = 10000 // guard against list[999999999] allocating huge slices
+
+var (
+	// Matches "app", "app[0]", "app[0][1]", etc.
+	partRe = regexp.MustCompile(`^([^\[\]]*)((?:\[\d+])*)$`)
+
+	// Matches "[0]", "[1]", "[123]", etc.
+	idxRe = regexp.MustCompile(`\[(\d+)]`)
+)
+
+type pathToken struct {
+	name    string // name is the map key. Only meaningful when isIndex is false.
+	index   int    // index is the list position. Only meaningful when isIndex is true.
+	isIndex bool   // isIndex is true for a list step like [0], false for a map key step.
+}
+
+// parsePropertyPath parses a key like "a.b[0].c[1][2]"
+// into path tokens: a, b, [0], c, [1], [2].
+//
+// Invalid paths return ok=false and should be kept as flat keys.
+func parsePropertyPath(key string) (tokens []pathToken, ok bool) {
+	for _, segment := range strings.Split(key, ".") {
+		matches := partRe.FindStringSubmatch(segment)
+		if matches == nil {
+			return nil, false
+		}
+
+		propertyName := matches[1]
+		indexPart := matches[2]
+
+		if propertyName != "" {
+			tokens = append(tokens, pathToken{name: propertyName})
+		} else if indexPart == "" {
+			// Example: "a..b" contains an empty path segment.
+			return nil, false
+		}
+
+		for _, indexMatch := range idxRe.FindAllStringSubmatch(indexPart, -1) {
+			index, err := strconv.Atoi(indexMatch[1])
+			if err != nil || index > maxListIndex {
+				return nil, false
+			}
+
+			tokens = append(tokens, pathToken{
+				index:   index,
+				isIndex: true,
+			})
+		}
+	}
+
+	if len(tokens) == 0 || tokens[0].isIndex {
+		// The root must always be a map, so a key cannot start with [0].
+		return nil, false
+	}
+
+	return tokens, true
+}
+
+// renderPropertyPath converts path tokens back into a key string.
+//
+// Example:
+//
+//	[a, b, [0], c] -> "a.b[0].c"
+//
+// This is used when a nested structure cannot be created because of
+// a type conflict. In that case, the remaining path is stored as a flat key.
+func renderPropertyPath(tokens []pathToken) string {
+	var builder strings.Builder
+
+	for i, token := range tokens {
+		if token.isIndex {
+			builder.WriteString("[" + strconv.Itoa(token.index) + "]")
 			continue
 		}
 
-		nested, ok := child.(map[string]interface{})
-		if !ok {
-			// child is a leaf value (e.g. "message" = "Hello"), so we can't nest
-			// under it. Rather than destroying the existing value, preserve both
-			// by storing this key as a flat literal key (e.g. "message.text").
-			current[strings.Join(parts[i:], ".")] = value
-			return
+		if i > 0 {
+			builder.WriteByte('.')
 		}
-		current = nested
+		builder.WriteString(token.name)
 	}
-	leaf := parts[len(parts)-1]
-	current[leaf] = value
-	return
+
+	return builder.String()
+}
+
+// setNestedValue creates the structure described by pathTokens and stores value.
+//
+// For example:
+//
+//	"a.b[0]" = "hello"
+//
+// becomes:
+//
+//	map[string]interface{}{
+//	    "a": map[string]interface{}{
+//	        "b": []interface{}{"hello"},
+//	    },
+//	}
+//
+// The operation fails when an existing value has the wrong type.
+func setNestedValue(
+	currentValue interface{},
+	pathTokens []pathToken,
+	value string,
+) (interface{}, bool) {
+	currentToken := pathTokens[0]
+
+	if currentToken.isIndex {
+		return setListValue(currentValue, pathTokens, value)
+	}
+
+	return setMapValue(currentValue, pathTokens, value)
+}
+
+// setListValue adds a value to a list at the index described by pathTokens.
+func setListValue(
+	currentValue interface{},
+	pathTokens []pathToken,
+	value string,
+) (interface{}, bool) {
+	var list []interface{}
+
+	if currentValue != nil {
+		var ok bool
+		list, ok = currentValue.([]interface{})
+		if !ok {
+			// Example: existing value is "hello", but the key requires [0].
+			return currentValue, false
+		}
+	}
+
+	currentToken := pathTokens[0]
+
+	// Grow the list so the requested index exists.
+	for len(list) <= currentToken.index {
+		list = append(list, nil)
+	}
+
+	if len(pathTokens) == 1 {
+		list[currentToken.index] = value
+		return list, true
+	}
+
+	childValue, ok := setNestedValue(
+		list[currentToken.index],
+		pathTokens[1:],
+		value,
+	)
+	if !ok {
+		return currentValue, false
+	}
+
+	list[currentToken.index] = childValue
+	return list, true
+}
+
+// setMapValue adds a value to a map using the property name from pathTokens.
+func setMapValue(
+	currentValue interface{},
+	pathTokens []pathToken,
+	value string,
+) (interface{}, bool) {
+	var properties map[string]interface{}
+
+	if currentValue == nil {
+		properties = make(map[string]interface{})
+	} else {
+		var ok bool
+		properties, ok = currentValue.(map[string]interface{})
+		if !ok {
+			// Example: "a" already contains "hello",
+			// but we now need "a.b".
+			return currentValue, false
+		}
+	}
+
+	currentToken := pathTokens[0]
+
+	if len(pathTokens) == 1 {
+		properties[currentToken.name] = value
+		return properties, true
+	}
+
+	childValue, ok := setNestedValue(
+		properties[currentToken.name],
+		pathTokens[1:],
+		value,
+	)
+	if !ok {
+		// The existing value prevents us from creating the nested structure.
+		// Keep the original value and store the new property as a flat key.
+		properties[renderPropertyPath(pathTokens)] = value
+		return properties, true
+	}
+
+	properties[currentToken.name] = childValue
+	return properties, true
 }
 
 func resolveProperties(properties map[string]model.ConfigProperty) error {
@@ -244,62 +438,72 @@ func resolveProperties(properties map[string]model.ConfigProperty) error {
 	return nil
 }
 
+// Compile once; matches ${key} and ${key:default}.
+var placeholderRe = regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?}`)
+
 func resolvePropertyValue(value string, properties map[string]model.ConfigProperty, resolving map[string]bool) (string, error) {
 	if resolving == nil {
 		// Track properties being resolved to detect circular references.
 		resolving = make(map[string]bool)
 	}
 
-	// Match ${key} and ${key:default} placeholders.
-	re := regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
+	matches := placeholderRe.FindAllStringSubmatchIndex(value, -1)
+	if matches == nil {
+		return value, nil
+	}
 
-	for {
-		// Find the next placeholder.
-		match := re.FindStringSubmatchIndex(value)
-		if match == nil {
-			return value, nil
-		}
+	var sb strings.Builder
+	last := 0
 
-		// Extract the property key.
-		key := value[match[2]:match[3]]
-		replacement, exists := properties[key]
+	for _, m := range matches {
+		// Copy the text before this placeholder.
+		sb.WriteString(value[last:m[0]])
+		last = m[1]
 
-		if !exists {
-			if match[4] == -1 {
-				// Keep unresolved placeholders unchanged.
-				return value, nil
+		key := value[m[2]:m[3]]
+		hasDefault := m[4] != -1
+
+		prop, exists := properties[key]
+
+		var raw string
+		switch {
+		case exists:
+			if resolving[key] {
+				return "", fmt.Errorf("circular property reference detected: %s", key)
 			}
-
-			// Use the default value when the property is missing.
-			replacement.Value = value[match[4]:match[5]]
-		} else if resolving[key] {
-			// Prevent infinite recursion from circular references.
-			return "", fmt.Errorf("circular property reference detected: %s", key)
+			raw = prop.Value
+		case hasDefault:
+			raw = value[m[4]:m[5]]
+		default:
+			// Unresolved and no default: keep the placeholder as-is and move on.
+			sb.WriteString(value[m[0]:m[1]])
+			continue
 		}
 
-		// Mark the property as being resolved.
-		resolving[key] = true
+		// Only properties (not inline defaults) can participate in a cycle.
+		if exists {
+			resolving[key] = true
+		}
 
-		// Resolve nested placeholders.
-		var err error
-		replacement.Value, err = resolvePropertyValue(
-			replacement.Value,
-			properties,
-			resolving,
-		)
+		resolved, err := resolvePropertyValue(raw, properties, resolving)
+
+		if exists {
+			// Allow the property to be resolved again elsewhere.
+			delete(resolving, key)
+		}
 		if err != nil {
 			return "", err
 		}
 
-		// Allow the property to be resolved again elsewhere.
-		delete(resolving, key)
-
-		// Replace the placeholder with its resolved value.
-		value = value[:match[0]] + replacement.Value + value[match[1]:]
+		sb.WriteString(resolved)
 	}
+
+	sb.WriteString(value[last:])
+	return sb.String(), nil
 }
 
 func buildPropertiesText(properties map[string]model.ConfigProperty) string {
+
 	var builder strings.Builder
 
 	for _, property := range properties {
@@ -350,27 +554,36 @@ func buildConfigProfiles(
 			Version:     0,
 			Properties: toConfigProperties(
 				propertiesByApp[app],
-				prefix+"/"+app,
+				prefix+app,
 			),
 		})
 	}
 
 	return profiles
 }
+
 func marshalWithSingleQuotes(v interface{}) ([]byte, error) {
 	// First marshal normally to get a Node tree
 	var node yaml.Node
+
 	tmp, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal value: %w", err)
 	}
+
 	if err := yaml.Unmarshal(tmp, &node); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal YAML into node: %w", err)
 	}
+
 	// Walk the tree and convert double-quoted scalars to single-quoted
 	forceSingleQuotes(&node)
 
-	return yaml.Marshal(&node)
+	result, err := yaml.Marshal(&node)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal YAML node: %w", err)
+	}
+
+	return result, nil
 }
 
 func forceSingleQuotes(node *yaml.Node) {
@@ -381,11 +594,31 @@ func forceSingleQuotes(node *yaml.Node) {
 		forceSingleQuotes(child)
 	}
 }
+
 func GetFiberParam(fiberCtx *fiber.Ctx, paramName string) string {
 	paramValue := fiberCtx.Params(paramName)
-	unescapedStr, err := url.QueryUnescape(paramValue)
+	unescapedStr, err := url.PathUnescape(paramValue)
 	if err != nil {
 		return utils.CopyString(paramValue)
 	}
 	return utils.CopyString(unescapedStr)
+}
+
+func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error) {
+	idx := strings.LastIndex(nameWithProfiles, "-")
+
+	if idx <= 0 || idx == len(nameWithProfiles)-1 {
+		return "", "", fmt.Errorf("invalid application-profile value: %q", nameWithProfiles)
+	}
+
+	application := nameWithProfiles[:idx]
+	profiles := nameWithProfiles[idx+1:]
+
+	return application, profiles, nil
+}
+
+func LogError(log logging.Logger, ctx context.Context, format string, args ...any) error {
+	s := fmt.Errorf(format, args...)
+	log.ErrorC(ctx, "%s", s.Error())
+	return s
 }
