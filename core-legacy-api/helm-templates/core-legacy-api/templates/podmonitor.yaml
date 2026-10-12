@@ -1,4 +1,4 @@
-{{ if .Values.MONITORING_INSTALL }}
+{{ if .Values.MONITORING_ENABLED }}
 ---
 kind: PodMonitor
 apiVersion: monitoring.coreos.com/v1

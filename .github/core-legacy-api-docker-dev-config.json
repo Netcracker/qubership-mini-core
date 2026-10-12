@@ -1,0 +1,10 @@
+{
+  "components" : [
+    {
+      "name": "qubership-mini-core-core-legacy-api",
+      "file": "./core-legacy-api/Dockerfile",
+      "context": "./core-legacy-api/"
+    }
+  ],
+  "platforms" : "linux/amd64,linux/arm64"
+}

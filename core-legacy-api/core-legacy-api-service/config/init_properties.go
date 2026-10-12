@@ -2,36 +2,72 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/logging"
+	qubersecurity "github.com/netcracker/qubership-core-lib-go/v3/security"
+	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
 )
 
-func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
-	err := InitializeGlobalDefaultProperties(s, ctx)
-	if err != nil {
+var logger = logging.GetLogger("Initialization")
 
+const defaultPropertiesMarkerKey = "default_properties_initialized"
+
+func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
+	// Check whether the default properties have already been initialized.
+	initialized, err := isDefaultPropertiesInitialized(ctx, s)
+	if err != nil {
+		logger.ErrorC(ctx, "Failed to check default properties initialization: %v", err)
 		return err
 	}
+	if initialized {
+		logger.InfoC(ctx, "Default properties are already initialized, skipping initialization")
+		return nil
+	}
+
+	// Initialize the global default properties required by the system.
+	if err := InitializeGlobalDefaultProperties(s, ctx); err != nil {
+		return err
+	}
+
+	// Initialize baseline properties when a baseline project is configured.
 	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
 	if strings.TrimSpace(baselineProj) != "" {
 		if err := InitializeBaselineProperties(s, ctx); err != nil {
 			return err
 		}
 	}
-	err = InitializeTenantManagerDefaultProperties(s, ctx)
-	if err != nil {
+
+	// Initialize default properties for Tenant Manager.
+	if err := InitializeTenantManagerDefaultProperties(s, ctx); err != nil {
 		return err
 	}
-	err = InitializeDmpTenantActivatorDefaultProperties(s, ctx)
-	if err != nil {
+
+	// Initialize default properties for DMP Tenant Activator.
+	if err := InitializeDmpTenantActivatorDefaultProperties(s, ctx); err != nil {
 		return err
 	}
-	return nil
+
+	// Mark the default properties as initialized to prevent repeated initialization.
+	return s.AddProperties(ctx, "config-server", "", map[string]string{
+		defaultPropertiesMarkerKey: "true",
+	})
+}
+
+func isDefaultPropertiesInitialized(ctx context.Context, s ConfigService) (bool, error) {
+	profile, err := s.FindByApplicationAndProfile(ctx, "config-server", defaultProfileName)
+	if err != nil {
+		return false, err
+	}
+	if value, ok := profile.GetPropertiesAsMap()[defaultPropertiesMarkerKey]; ok {
+		return value.Value == "true", nil
+	}
+	return false, nil
 }
 
 func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) error {
@@ -128,8 +164,11 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 	if strings.TrimSpace(baselineProj) == "" {
 		return nil
 	}
+	baselineFetchProperties := strings.Split(configloader.GetOrDefaultString("baseline.fetch.properties", ""), ",")
 
-	baselineFetchProperties := []string{"tenant.default.id", "bss.tenant.default-id"}
+	logger.InfoC(ctx, "Starting baseline properties initialization")
+	logger.InfoC(ctx, "Baseline project: %q", baselineProj)
+	logger.InfoC(ctx, "Properties configured for migration: %v", baselineFetchProperties)
 
 	// Fetch global/default from the baseline Config Server.
 	baselineProps, err := getBaselineProperties(
@@ -147,6 +186,7 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 
 	for _, property := range baselineFetchProperties {
 		if value, exists := baselineProps[property]; exists {
+			logger.DebugC(ctx, "Selected baseline property for migration: %s", property)
 			propertiesToMigrate[property] = value
 		}
 	}
@@ -163,6 +203,7 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 		propertiesToMigrate,
 	)
 }
+
 func getBaselineProperties(
 	ctx context.Context,
 	baselineProj string,
@@ -176,27 +217,10 @@ func getBaselineProperties(
 		profile,
 	)
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		url,
-		nil,
-	)
+	tokenProvider := serviceloader.MustLoad[qubersecurity.TokenProvider]()
+	token, err := tokenProvider.GetToken(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf(
-			"baseline Config Server returned HTTP %d",
-			resp.StatusCode,
-		)
 	}
 
 	var response struct {
@@ -205,9 +229,30 @@ func getBaselineProperties(
 		} `json:"propertySources"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	client := resty.New().
+		SetTimeout(30 * time.Second)
+
+	resp, err := client.R().
+		SetContext(ctx).
+		SetHeader("Authorization", "Bearer "+token).
+		SetResult(&response).
+		Get(url)
+	if err != nil {
 		return nil, err
 	}
+
+	if !resp.IsSuccess() {
+		return nil, fmt.Errorf(
+			"baseline Config Server returned HTTP %d",
+			resp.StatusCode(),
+		)
+	}
+
+	logger.InfoC(
+		ctx,
+		"Baseline response contains %d property sources",
+		len(response.PropertySources),
+	)
 
 	if len(response.PropertySources) == 0 {
 		return map[string]string{}, nil
