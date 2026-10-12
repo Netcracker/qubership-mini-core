@@ -663,6 +663,34 @@ func TestFindOne_WithMultipleProfiles(t *testing.T) {
 	assert.Equal(t, []string{"dev"}, env.Profiles)
 }
 
+func TestFindOne_ReturnsEachRequestedProfile(t *testing.T) {
+	controller, mockService, ctrl := newTestController(t)
+	defer ctrl.Finish()
+
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+		Return(model.ConfigProfile{}, nil)
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), "test-app", "dev").
+		Return(model.ConfigProfile{}, nil)
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), "test-app", "prod").
+		Return(model.ConfigProfile{}, nil)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Get("/:application/:profile", controller.FindOne)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/test-app/dev,prod", nil))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var env model.Environment
+	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+	assert.Equal(t, []string{"dev", "prod"}, env.Profiles)
+}
+
 func TestFindOne_WithoutLabel(t *testing.T) {
 	controller, mockService, ctrl := newTestController(t)
 	defer ctrl.Finish()
