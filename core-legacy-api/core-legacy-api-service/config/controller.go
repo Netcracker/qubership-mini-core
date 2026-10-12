@@ -78,7 +78,7 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 
 	environment := buildEnvironment(
 		application,
-		[]string{GetFiberParam(c, "profile")},
+		activeProfiles,
 		label,
 		properties,
 	)
