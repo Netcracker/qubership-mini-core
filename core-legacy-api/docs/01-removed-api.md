@@ -42,8 +42,8 @@ The following endpoints are supported by `core-legacy-api`.
 
 | Method | Path | Description | Query parameters |
 |---|---|---|---|
-| GET | `/{application}/{profile}` | Retrieve configuration for an application and profile | `resolvePlaceholders` (boolean, default: `true`) |
-| GET | `/{application}/{profile}/{label}` | Retrieve configuration for an application, profile, and label | `resolvePlaceholders` (boolean, default: `true`) |
+| GET | `/{application}/{profile}` | Retrieve configuration for an application and profile | None |
+| GET | `/{application}/{profile}/{label}` | Retrieve configuration for an application, profile, and label | None |
 | GET | `/{application}-{profile}.json` | Retrieve configuration in JSON format | `resolvePlaceholders` (boolean, default: `true`) |
 | GET | `/{application}-{profile}.properties` | Retrieve configuration in properties format | `resolvePlaceholders` (boolean, default: `true`) |
 | GET | `/{application}-{profile}.yaml` | Retrieve configuration in YAML format | `resolvePlaceholders` (boolean, default: `true`) |
