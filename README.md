@@ -40,9 +40,10 @@ The parameters below configure the service itself.
 | `TRACING_SAMPLER_PROBABILISTIC` | `0.01` | Share of requests that are traced. |
 | `HTTP_BUFFER_HEADER_MAX_SIZE` | `10240` | Largest request header the service accepts, in bytes. Also written to `global` as `http.buffer.header.max.size`. |
 
-These parameters only set default properties of the `global` application on the first start:
+These parameters only set default properties on the first start. The properties go to `global`, and
+`openshift.server.url` also goes to `tenant-manager`, where it takes precedence over `global`:
 
-| Parameter | Default | Property in `global` |
+| Parameter | Default | Property |
 | --- | --- | --- |
 | `CLOUD_PUBLIC_HOST` | none | Host part of `apigateway.external.public.url` and `openshift.server.url` |
 | `CLOUD_PRIVATE_HOST` | `CLOUD_PUBLIC_HOST` | Host part of `apigateway.external.private.url` and `openshift.server.internal.url` |
