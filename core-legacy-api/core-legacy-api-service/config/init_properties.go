@@ -18,7 +18,7 @@ var logger = logging.GetLogger("Initialization")
 
 const defaultPropertiesMarkerKey = "default_properties_initialized"
 
-func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
+func InitializeDefaultProperties(ctx context.Context, s ConfigService) error {
 	// Check whether the default properties have already been initialized.
 	initialized, err := isDefaultPropertiesInitialized(ctx, s)
 	if err != nil {
@@ -31,25 +31,25 @@ func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
 	}
 
 	// Initialize the global default properties required by the system.
-	if err := InitializeGlobalDefaultProperties(s, ctx); err != nil {
+	if err := InitializeGlobalDefaultProperties(ctx, s); err != nil {
 		return err
 	}
 
 	// Initialize baseline properties when a baseline project is configured.
 	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
 	if strings.TrimSpace(baselineProj) != "" {
-		if err := InitializeBaselineProperties(s, ctx); err != nil {
+		if err := InitializeBaselineProperties(ctx, s); err != nil {
 			return err
 		}
 	}
 
 	// Initialize default properties for Tenant Manager.
-	if err := InitializeTenantManagerDefaultProperties(s, ctx); err != nil {
+	if err := InitializeTenantManagerDefaultProperties(ctx, s); err != nil {
 		return err
 	}
 
 	// Initialize default properties for DMP Tenant Activator.
-	if err := InitializeDmpTenantActivatorDefaultProperties(s, ctx); err != nil {
+	if err := InitializeDmpTenantActivatorDefaultProperties(ctx, s); err != nil {
 		return err
 	}
 
@@ -70,7 +70,7 @@ func isDefaultPropertiesInitialized(ctx context.Context, s ConfigService) (bool,
 	return false, nil
 }
 
-func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) error {
+func InitializeGlobalDefaultProperties(ctx context.Context, s ConfigService) error {
 	// 1. Core Cloud Infrastructure Settings
 	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
 	cloudPublicHost := configloader.GetOrDefaultString("cloud.public.host", "")
@@ -158,7 +158,7 @@ func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) err
 	return s.AddProperties(ctx, configPropertiesGlobalApplicationName, defaultProfileName, properties)
 }
 
-func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
+func InitializeBaselineProperties(ctx context.Context, s ConfigService) error {
 	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
 
 	if strings.TrimSpace(baselineProj) == "" {
@@ -261,7 +261,7 @@ func getBaselineProperties(
 	return response.PropertySources[0].Source, nil
 }
 
-func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Context) error {
+func InitializeTenantManagerDefaultProperties(ctx context.Context, s ConfigService) error {
 	InstallationNameRules := "[{\"namespace\":null,\"microserviceName\":null,\"tenantId\":null,\"dbClassifier\":null, \"installationName\" : \"default\"}]"
 	cloudPort := configloader.GetOrDefaultString("cloud.api.port", "6443")
 	cloudProtocol := configloader.GetOrDefaultString("cloud.protocol", "https")
@@ -290,7 +290,7 @@ func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Conte
 
 }
 
-func InitializeDmpTenantActivatorDefaultProperties(s ConfigService, ctx context.Context) error {
+func InitializeDmpTenantActivatorDefaultProperties(ctx context.Context, s ConfigService) error {
 	properties := map[string]string{
 		"tenant.shoppingFrontend.templateName": "qubership-cloud-shopping-frontend",
 	}
