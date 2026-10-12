@@ -433,6 +433,18 @@ func TestToApplicationResponses(t *testing.T) {
 	}
 }
 
+func TestToApplicationResponsesSortsApplicationsAndProfiles(t *testing.T) {
+	applications := make(map[string][]string)
+	var expected []model.ApplicationWithProfiles
+	for i := 0; i < 16; i++ {
+		name := fmt.Sprintf("app-%02d", i)
+		applications[name] = []string{"prod", "dev"}
+		expected = append(expected, model.ApplicationWithProfiles{Name: name, Profiles: []string{"dev", "prod"}})
+	}
+
+	assert.Equal(t, expected, toApplicationResponses(applications))
+}
+
 func TestOptionalString(t *testing.T) {
 	tests := []struct {
 		name     string
