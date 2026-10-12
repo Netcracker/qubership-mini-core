@@ -98,30 +98,11 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 // @Router /{name}-{profiles}.json [get]
 // @Router /{label}/{name}-{profiles}.json [get]
 func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
-	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
+	req, err := ctrl.loadRequestedProperties(c, "JSON")
 	if err != nil {
-		return LogError(ctrl.logger, ctx, "invalid name and profiles %q: %w", nameAndProfiles, ErrNotFound)
+		return err
 	}
-	activeProfiles := strings.Split(profiles, ",")
-	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
-
-	ctrl.logger.DebugC(ctx, "Finding JSON config for application=%s, profiles=%s", application, activeProfiles)
-
-	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
-	if err != nil {
-		return LogError(ctrl.logger, ctx, "failed to load merged properties for application=%s profiles=%v: %w", application, activeProfiles, err)
-	}
-
-	if resolvePlaceholders {
-		err = resolveProperties(properties)
-		if err != nil {
-			return LogError(ctrl.logger, ctx, "failed to resolve properties for application=%s profiles=%v: %w", application, activeProfiles, ErrBadRequest)
-		}
-	}
-	result := buildNestedProperties(properties)
-	return ResponseOk(c, result)
+	return ResponseOk(c, buildNestedProperties(req.properties))
 }
 
 // FindOneProperties godoc
@@ -137,30 +118,11 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 // @Router /{name}-{profiles}.properties [get]
 // @Router /{label}/{name}-{profiles}.properties [get]
 func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
-	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
+	req, err := ctrl.loadRequestedProperties(c, "properties-format")
 	if err != nil {
-		return LogError(ctrl.logger, ctx, "invalid name and profiles %q: %w", nameAndProfiles, ErrNotFound)
+		return err
 	}
-	activeProfiles := strings.Split(profiles, ",")
-	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
-
-	ctrl.logger.DebugC(ctx, "Finding properties-format config for application=%s, profiles=%s", application, activeProfiles)
-
-	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
-	if err != nil {
-		return LogError(ctrl.logger, ctx, "failed to load merged properties for application=%s profiles=%v: %w", application, activeProfiles, err)
-	}
-
-	if resolvePlaceholders {
-		err = resolveProperties(properties)
-		if err != nil {
-			return LogError(ctrl.logger, ctx, "failed to resolve properties for application=%s profiles=%v: %w", application, activeProfiles, ErrBadRequest)
-		}
-	}
-
-	return RespondWithProperties(c, http.StatusOK, buildPropertiesText(properties))
+	return RespondWithProperties(c, http.StatusOK, buildPropertiesText(req.properties))
 }
 
 // FindOneYaml godoc
@@ -179,37 +141,52 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 // @Router /{name}-{profiles}.yaml [get]
 // @Router /{label}/{name}-{profiles}.yaml [get]
 func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
-	ctx := c.UserContext()
+	req, err := ctrl.loadRequestedProperties(c, "YAML")
+	if err != nil {
+		return err
+	}
 
+	nested := buildNestedProperties(req.properties)
+
+	yamlBytes, err := marshalWithSingleQuotes(nested)
+	if err != nil {
+		return LogError(ctrl.logger, c.UserContext(), "failed to marshal YAML for application=%s profiles=%v: %w", req.application, req.profiles, err)
+	}
+	return RespondWithBytes(c, http.StatusOK, yamlBytes)
+}
+
+type requestedProperties struct {
+	application string
+	profiles    []string
+	properties  map[string]model.ConfigProperty
+}
+
+// loadRequestedProperties loads the merged properties for the nameAndProfiles path parameter
+// and resolves placeholders unless the request sets resolvePlaceholders=false.
+func (ctrl *ConfigController) loadRequestedProperties(c *fiber.Ctx, format string) (requestedProperties, error) {
+	ctx := c.UserContext()
 	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
 	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
 	if err != nil {
-		return LogError(ctrl.logger, ctx, "invalid name and profiles %q: %w", nameAndProfiles, ErrNotFound)
+		return requestedProperties{}, LogError(ctrl.logger, ctx, "invalid name and profiles %q: %w", nameAndProfiles, ErrNotFound)
 	}
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
-	ctrl.logger.DebugC(ctx, "Finding YAML config for application=%s, profiles=%s", application, activeProfiles)
+	ctrl.logger.DebugC(ctx, "Finding %s config for application=%s, profiles=%s", format, application, activeProfiles)
 
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
-		return LogError(ctrl.logger, ctx, "failed to load merged properties for application=%s profiles=%v: %w", application, activeProfiles, err)
+		return requestedProperties{}, LogError(ctrl.logger, ctx, "failed to load merged properties for application=%s profiles=%v: %w", application, activeProfiles, err)
 	}
 
 	if resolvePlaceholders {
 		err = resolveProperties(properties)
 		if err != nil {
-			return LogError(ctrl.logger, ctx, "failed to resolve properties for application=%s profiles=%v: %w", application, activeProfiles, ErrBadRequest)
+			return requestedProperties{}, LogError(ctrl.logger, ctx, "failed to resolve properties for application=%s profiles=%v: %w", application, activeProfiles, ErrBadRequest)
 		}
 	}
-
-	nested := buildNestedProperties(properties)
-
-	yamlBytes, err := marshalWithSingleQuotes(nested)
-	if err != nil {
-		return LogError(ctrl.logger, ctx, "failed to marshal YAML for application=%s profiles=%v: %w", application, activeProfiles, err)
-	}
-	return RespondWithBytes(c, http.StatusOK, yamlBytes)
+	return requestedProperties{application, activeProfiles, properties}, nil
 }
 
 // merges properties from global,default profile with properties from specified application,profile
