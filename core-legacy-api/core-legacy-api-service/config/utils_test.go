@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1122,6 +1124,18 @@ func TestBuildPropertiesText(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestBuildPropertiesTextSortsKeys(t *testing.T) {
+	properties := make(map[string]model.ConfigProperty)
+	var expected strings.Builder
+	for i := 0; i < 16; i++ {
+		key := fmt.Sprintf("key.%02d", i)
+		properties[key] = model.ConfigProperty{Key: key, Value: strconv.Itoa(i)}
+		expected.WriteString(fmt.Sprintf("%s: %d\n", key, i))
+	}
+
+	assert.Equal(t, expected.String(), buildPropertiesText(properties))
 }
 
 func TestGetFiberParam(t *testing.T) {
