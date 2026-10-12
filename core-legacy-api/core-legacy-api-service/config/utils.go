@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -126,9 +127,17 @@ func groupProfilesByApplication(profiles []model.ConfigProfile) map[string][]str
 }
 
 func toApplicationResponses(applications map[string][]string) []model.ApplicationWithProfiles {
+	names := make([]string, 0, len(applications))
+	for application := range applications {
+		names = append(names, application)
+	}
+	sort.Strings(names)
+
 	result := make([]model.ApplicationWithProfiles, 0, len(applications))
 
-	for application, profiles := range applications {
+	for _, application := range names {
+		profiles := slices.Clone(applications[application])
+		sort.Strings(profiles)
 		result = append(result, model.ApplicationWithProfiles{
 			Name:     application,
 			Profiles: profiles,
