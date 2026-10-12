@@ -39,7 +39,7 @@ func NewConfigPropertiesController(configService ConfigService) *ConfigControlle
 // @Router /applications [get]
 func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-	ctrl.logger.InfoC(ctx, "Getting applications")
+	ctrl.logger.DebugC(ctx, "Getting applications")
 
 	configProfiles, err := ctrl.sv.FindAll(ctx)
 	if err != nil {
@@ -69,7 +69,7 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 	activeProfiles := strings.Split(GetFiberParam(c, "profile"), ",")
 	label := optional(GetFiberParam(c, "label"), "")
 
-	ctrl.logger.InfoC(ctx, "Finding config for application=%s, profiles=%s", application, activeProfiles)
+	ctrl.logger.DebugC(ctx, "Finding config for application=%s, profiles=%s", application, activeProfiles)
 
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
@@ -107,7 +107,7 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
-	ctrl.logger.InfoC(ctx, "Finding JSON config for application=%s, profiles=%s", application, activeProfiles)
+	ctrl.logger.DebugC(ctx, "Finding JSON config for application=%s, profiles=%s", application, activeProfiles)
 
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
@@ -146,7 +146,7 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
-	ctrl.logger.InfoC(ctx, "Finding properties-format config for application=%s, profiles=%s", application, activeProfiles)
+	ctrl.logger.DebugC(ctx, "Finding properties-format config for application=%s, profiles=%s", application, activeProfiles)
 
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
@@ -189,7 +189,7 @@ func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
-	ctrl.logger.InfoC(ctx, "Finding YAML config for application=%s, profiles=%s", application, activeProfiles)
+	ctrl.logger.DebugC(ctx, "Finding YAML config for application=%s, profiles=%s", application, activeProfiles)
 
 	properties, err := ctrl.loadMergedProperties(ctx, application, activeProfiles)
 	if err != nil {
