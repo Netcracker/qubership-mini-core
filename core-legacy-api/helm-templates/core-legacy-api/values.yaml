@@ -5,6 +5,7 @@ READONLY_CONTAINER_FILE_SYSTEM_ENABLED: true
 IMAGE_REPOSITORY: ''
 
 # ============== SERVICE VARIABLES ============================
+LOG_LEVEL: "info"
 
 SERVICE_NAME: "core-legacy-api"
 
