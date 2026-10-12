@@ -46,6 +46,33 @@ info:
   version: 1.0.0
 paths:
   /{application}/{profile}:
+    get:
+      parameters:
+      - description: application
+        in: path
+        name: application
+        required: true
+        type: string
+      - description: comma-separated profiles
+        in: path
+        name: profile
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Environment'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      tags:
+      - Config Properties
     post:
       consumes:
       - application/json
@@ -128,6 +155,39 @@ paths:
               type: string
             type: object
       summary: Add new property
+      tags:
+      - Config Properties
+  /{application}/{profile}/{label}:
+    get:
+      parameters:
+      - description: application
+        in: path
+        name: application
+        required: true
+        type: string
+      - description: comma-separated profiles
+        in: path
+        name: profile
+        required: true
+        type: string
+      - description: label
+        in: path
+        name: label
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Environment'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       tags:
       - Config Properties
   /{application}/{profile}/properties-delete:
@@ -500,67 +560,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      tags:
-      - Config Properties
-  /{name}/{profiles}:
-    get:
-      parameters:
-      - description: name
-        in: path
-        name: name
-        required: true
-        type: string
-      - description: profiles
-        in: path
-        name: profiles
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Environment'
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      tags:
-      - Config Properties
-  /{name}/{profiles}/{label}:
-    get:
-      parameters:
-      - description: name
-        in: path
-        name: name
-        required: true
-        type: string
-      - description: profiles
-        in: path
-        name: profiles
-        required: true
-        type: string
-      - description: label
-        in: path
-        name: label
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Environment'
         "500":
           description: Internal Server Error
           schema:

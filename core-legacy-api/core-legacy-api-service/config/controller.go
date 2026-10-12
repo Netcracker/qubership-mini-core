@@ -54,14 +54,14 @@ func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 
 // FindOne godoc
 // @Tags Config Properties
-// @Param name path string true "name"
-// @Param profiles path string true "profiles"
+// @Param application path string true "application"
+// @Param profile path string true "comma-separated profiles"
 // @Param label path string true "label"
 // @Produce application/json
 // @Success 200 {object} model.Environment
 // @Failure 500 {object} map[string]string
-// @Router /{name}/{profiles} [get]
-// @Router /{name}/{profiles}/{label} [get]
+// @Router /{application}/{profile} [get]
+// @Router /{application}/{profile}/{label} [get]
 func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
