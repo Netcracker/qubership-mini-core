@@ -139,7 +139,7 @@ func (s *ConsulService) FindAll(ctx context.Context) ([]model.ConfigProfile, err
 
 	profiles := buildConfigProfiles(propertiesByApp, prefix)
 
-	s.logger.Infof("Found %d config profiles", len(profiles))
+	s.logger.DebugC(ctx, "Found %d config profiles", len(profiles))
 
 	return profiles, nil
 
