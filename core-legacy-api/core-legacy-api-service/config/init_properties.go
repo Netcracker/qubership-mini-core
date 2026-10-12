@@ -54,7 +54,7 @@ func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
 	}
 
 	// Mark the default properties as initialized to prevent repeated initialization.
-	return s.AddProperties(ctx, "config-server", "", map[string]string{
+	return s.AddProperties(ctx, "config-server", defaultProfileName, map[string]string{
 		defaultPropertiesMarkerKey: "true",
 	})
 }
