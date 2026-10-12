@@ -612,6 +612,53 @@ func TestGetApplicationsAndProfiles_MultipleApplications(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result), 2)
 }
 
+func TestFindOneFileFormats_RejectInvalidRequests(t *testing.T) {
+	circularGlobal := model.ConfigProfile{
+		Application: consulGlobalApplicationName,
+		Profile:     defaultProfileName,
+		Properties: []model.ConfigProperty{
+			{Key: "a", Value: "${b}"},
+			{Key: "b", Value: "${a}"},
+		},
+	}
+
+	for _, ext := range []string{"json", "properties", "yaml"} {
+		t.Run(ext+" name without profiles is not found", func(t *testing.T) {
+			controller, _, ctrl := newTestController(t)
+			defer ctrl.Finish()
+
+			resp, err := newFileFormatsApp(controller).Test(httptest.NewRequest(http.MethodGet, "/test."+ext, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+		})
+
+		t.Run(ext+" circular placeholder is a bad request", func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+				Return(circularGlobal, nil)
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), "test-app", "dev").
+				Return(model.ConfigProfile{}, nil)
+
+			resp, err := newFileFormatsApp(controller).Test(httptest.NewRequest(http.MethodGet, "/test-app-dev."+ext, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		})
+	}
+}
+
+func newFileFormatsApp(controller *ConfigController) *fiber.App {
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
+	app.Get("/:nameAndProfiles.properties", controller.FindOneProperties)
+	app.Get("/:nameAndProfiles.yaml", controller.FindOneYaml)
+	return app
+}
+
 func TestFindOne_WithMultipleProfiles(t *testing.T) {
 	controller, mockService, ctrl := newTestController(t)
 	defer ctrl.Finish()
