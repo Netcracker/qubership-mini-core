@@ -658,6 +658,20 @@ func propertyValueAsText(value json.RawMessage) (string, error) {
 	}
 }
 
+func validatePropertyKeys(properties map[string]string) error {
+	var dotKeys []string
+	for key := range properties {
+		if strings.HasPrefix(key, ".") {
+			dotKeys = append(dotKeys, key)
+		}
+	}
+	if len(dotKeys) == 0 {
+		return nil
+	}
+	sort.Strings(dotKeys)
+	return &InvalidPropertyKeysError{DotKeys: dotKeys}
+}
+
 func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error) {
 	idx := strings.LastIndex(nameWithProfiles, "-")
 

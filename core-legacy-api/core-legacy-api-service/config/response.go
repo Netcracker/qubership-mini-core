@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,6 +14,19 @@ var (
 	ErrNotFound            = errors.New("Not Found")
 	ErrInternalServerError = errors.New("Internal Server Error")
 )
+
+type InvalidPropertyKeysError struct {
+	DotKeys []string
+}
+
+func (e *InvalidPropertyKeysError) Error() string {
+	var builder strings.Builder
+	builder.WriteString("Property keys with errors: \n")
+	for _, key := range e.DotKeys {
+		builder.WriteString(key + " start with dot\n")
+	}
+	return builder.String()
+}
 
 type ErrorResponse struct {
 	Timestamp string `json:"timestamp"`
@@ -35,7 +49,11 @@ func FiberErrorHandler(c *fiber.Ctx, err error) error {
 	statusCode := http.StatusInternalServerError
 	message := ErrInternalServerError.Error()
 
+	var keysErr *InvalidPropertyKeysError
 	switch {
+	case errors.As(err, &keysErr):
+		c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
+		return c.Status(http.StatusBadRequest).SendString(keysErr.Error())
 	case errors.Is(err, ErrBadRequest):
 		statusCode = http.StatusBadRequest
 		message = ErrBadRequest.Error()

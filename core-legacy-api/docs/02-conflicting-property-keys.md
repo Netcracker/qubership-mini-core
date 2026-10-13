@@ -65,3 +65,16 @@ To preserve both properties, `core-legacy-api` serializes conflicting keys as **
   "message": "value2"
 }
 ```
+
+## 3. Keys Starting With a Dot
+
+`core-legacy-api` rejects a write that contains a key starting with a dot, as the original Config Server does: a property name cannot start with a dot. Only the keys in the request are checked; keys already stored are not.
+
+The response is `400 Bad Request` with a plain-text body that lists every such key, and no property from the request is written:
+
+```text
+Property keys with errors: 
+.foo start with dot
+```
+
+A dot inside a key, as in `message.text`, is accepted.

@@ -249,6 +249,9 @@ func (ctrl *ConfigController) AddProperties(c *fiber.Ctx) error {
 	if err != nil {
 		return LogError(ctrl.logger, ctx, "invalid property value for application=%s profile=%s: %v: %w", application, profile, err, ErrBadRequest)
 	}
+	if err := validatePropertyKeys(newProperties); err != nil {
+		return LogError(ctrl.logger, ctx, "invalid property keys for application=%s profile=%s: %w", application, profile, err)
+	}
 	err = ctrl.sv.AddProperties(ctx, application, profile, newProperties)
 	if err != nil {
 		return LogError(ctrl.logger, ctx, "failed to add properties for application=%s profile=%s: %w", application, profile, err)
