@@ -542,7 +542,7 @@ func TestAddProperties_RejectsKeysStartingWithDot(t *testing.T) {
 			expected: "Property keys with errors: \n.foo start with dot\n",
 		},
 		{
-			name:     "several keys are listed in order",
+			name:     "several keys are listed sorted by name",
 			body:     `{".b": "x", ".a": "y"}`,
 			expected: "Property keys with errors: \n.a start with dot\n.b start with dot\n",
 		},
@@ -725,7 +725,7 @@ func TestFindOne_ReplacesSlashPlaceholderInNameAndLabel(t *testing.T) {
 		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
 		Return(model.ConfigProfile{}, nil)
 	mockService.EXPECT().
-		FindByApplicationAndProfile(gomock.Any(), "team/app", "dev").
+		FindByApplicationAndProfile(gomock.Any(), "team/a/app", "dev").
 		Return(model.ConfigProfile{}, nil)
 
 	app := fiber.New(fiber.Config{
@@ -733,15 +733,34 @@ func TestFindOne_ReplacesSlashPlaceholderInNameAndLabel(t *testing.T) {
 	})
 	app.Get("/:application/:profile/:label", controller.FindOne)
 
-	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/team(_)app/dev/feature(_)x", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/team(_)a(_)app/dev/feature(_)x(_)y", nil))
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var env model.Environment
 	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
-	assert.Equal(t, "team/app", env.Name)
+	assert.Equal(t, "team/a/app", env.Name)
 	if assert.NotNil(t, env.Label) {
-		assert.Equal(t, "feature/x", *env.Label)
+		assert.Equal(t, "feature/x/y", *env.Label)
+	}
+}
+
+func TestFindOneFileFormats_ReplaceSlashPlaceholderInName(t *testing.T) {
+	for _, ext := range []string{"json", "properties", "yaml"} {
+		t.Run(ext, func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+				Return(model.ConfigProfile{}, nil)
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), "team/a/app", "dev").
+				Return(model.ConfigProfile{}, nil)
+
+			resp, err := newFileFormatsApp(controller).Test(httptest.NewRequest(http.MethodGet, "/team(_)a(_)app-dev."+ext, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		})
 	}
 }
 
