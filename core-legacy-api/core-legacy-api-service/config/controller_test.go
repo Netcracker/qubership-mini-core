@@ -718,6 +718,33 @@ func TestGetApplicationsAndProfiles_MultipleApplications(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result), 2)
 }
 
+func TestFindOne_ReplacesSlashPlaceholderInNameAndLabel(t *testing.T) {
+	controller, mockService, ctrl := newTestController(t)
+	defer ctrl.Finish()
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+		Return(model.ConfigProfile{}, nil)
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), "team/app", "dev").
+		Return(model.ConfigProfile{}, nil)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Get("/:application/:profile/:label", controller.FindOne)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/team(_)app/dev/feature(_)x", nil))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var env model.Environment
+	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+	assert.Equal(t, "team/app", env.Name)
+	if assert.NotNil(t, env.Label) {
+		assert.Equal(t, "feature/x", *env.Label)
+	}
+}
+
 func TestFindOneFileFormats_RejectInvalidRequests(t *testing.T) {
 	circularGlobal := model.ConfigProfile{
 		Application: consulGlobalApplicationName,
