@@ -33,10 +33,6 @@ The parameters below configure the service itself.
 | Parameter | Default | Purpose |
 | --- | --- | --- |
 | `CONSUL_URL` | none | URL of the Consul server that stores the properties. The service does not start without it. |
-| `CONSUL_AUTH_MODE` | `kubernetes-with-m2m-fallback` | How the service gets the Consul ACL token for reading its own configuration and log levels: `kubernetes-with-m2m-fallback`, `kubernetes` or `m2m`. The stored properties are read and written with the token from the `config-server-consul-token` secret in every mode. |
-| `CONSUL_AUTH_METHOD` | `applications-k8s-m2m` | Consul auth method that the projected Kubernetes token is presented to. |
-| `CONSUL_AUTH_AUDIENCE` | `netcracker` | Audience of the projected Kubernetes token. The pod mounts a token for the `netcracker` audience only. |
-| `CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL` | `5h` | Lower bound on how often the m2m fallback retries the Kubernetes login. |
 | `BASELINE_PROJ` | none | Namespace of a config-server whose `global` properties `tenant.default.id` and `bss.tenant.default-id` are copied to `global` on the first start. Unset skips the copy. |
 | `LOG_LEVEL` | `info` | Log level. |
 | `TRACING_ENABLED` | `false` | Sends traces to `TRACING_HOST`. |
