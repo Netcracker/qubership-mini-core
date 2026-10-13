@@ -171,6 +171,7 @@ func (ctrl *ConfigController) loadRequestedProperties(c *fiber.Ctx, format strin
 	if err != nil {
 		return requestedProperties{}, LogError(ctrl.logger, ctx, "invalid name and profiles %q: %w", nameAndProfiles, ErrNotFound)
 	}
+	application = replaceSlashPlaceholder(application)
 	activeProfiles := strings.Split(profiles, ",")
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
