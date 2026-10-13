@@ -19,7 +19,7 @@ and copies selected properties from a baseline config-server when `BASELINE_PROJ
 | Page | Covers |
 | --- | --- |
 | [Removed API](core-legacy-api/docs/01-removed-api.md) | Endpoints that config-server has and `core-legacy-api` does not, and the supported endpoints |
-| [Conflicting property keys](core-legacy-api/docs/02-conflicting-property-keys.md) | Keys such as `db` and `db.url` stored side by side |
+| [Conflicting property keys](core-legacy-api/docs/02-conflicting-property-keys.md) | Keys such as `db` and `db.url` stored side by side, and keys starting with a dot, which writes reject |
 | [Why writes take no lock](core-legacy-api/docs/03-why-writes-take-no-lock.md) | Concurrent writes to one application and profile |
 | [Array keys](core-legacy-api/docs/04-array-keys.md) | Keys such as `list[0]` in the JSON and YAML formats |
 | [Request and response samples](core-legacy-api/docs/05-request-response-samples.md) | One request and response per endpoint |

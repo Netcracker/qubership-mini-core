@@ -304,13 +304,13 @@ GET /main/myapp-dev.properties HTTP/1.1
 **Response**
 
 ```properties
-server.host: localhost
-server.port: 8080
 app.url: http://localhost:8080
-servers[0]: alpha
-servers[1]: beta
 db: primary
 db.url: jdbc:postgresql://localhost:5432/myapp
+server.host: localhost
+server.port: 8080
+servers[0]: alpha
+servers[1]: beta
 tags: x
 tags[0]: y
 ```
