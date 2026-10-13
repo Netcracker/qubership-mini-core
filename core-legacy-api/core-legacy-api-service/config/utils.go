@@ -150,6 +150,10 @@ func toApplicationResponses(applications map[string][]string) []model.Applicatio
 	return result
 }
 
+func replaceSlashPlaceholder(pathPart string) string {
+	return strings.ReplaceAll(pathPart, "(_)", "/")
+}
+
 func optional[T comparable](value T, empty T) *T {
 	if value == empty {
 		return nil

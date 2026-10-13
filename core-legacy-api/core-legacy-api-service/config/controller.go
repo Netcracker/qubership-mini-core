@@ -66,9 +66,9 @@ func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
-	application := GetFiberParam(c, "application")
+	application := replaceSlashPlaceholder(GetFiberParam(c, "application"))
 	activeProfiles := strings.Split(GetFiberParam(c, "profile"), ",")
-	label := optional(GetFiberParam(c, "label"), "")
+	label := optional(replaceSlashPlaceholder(GetFiberParam(c, "label")), "")
 
 	ctrl.logger.DebugC(ctx, "Finding config for application=%s, profiles=%s", application, activeProfiles)
 
