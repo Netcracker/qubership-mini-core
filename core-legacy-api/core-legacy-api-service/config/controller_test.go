@@ -530,6 +530,57 @@ func TestAddProperties_RejectsNonScalarValues(t *testing.T) {
 	}
 }
 
+func TestAddProperties_RejectsKeysStartingWithDot(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{
+			name:     "one key",
+			body:     `{".foo": "x"}`,
+			expected: "Property keys with errors: \n.foo start with dot\n",
+		},
+		{
+			name:     "several keys are listed in order",
+			body:     `{".b": "x", ".a": "y"}`,
+			expected: "Property keys with errors: \n.a start with dot\n.b start with dot\n",
+		},
+		{
+			name:     "valid key in the same request is not written",
+			body:     `{".foo": "x", "bar": "y"}`,
+			expected: "Property keys with errors: \n.foo start with dot\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller, _, ctrl := newTestController(t)
+			defer ctrl.Finish()
+
+			resp, err := newAddPropertiesApp(controller).Test(newJSONPost(tt.body))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			assert.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+			body, err := io.ReadAll(resp.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, string(body))
+		})
+	}
+}
+
+func TestAddProperties_AcceptsDotInsideKey(t *testing.T) {
+	controller, mockService, ctrl := newTestController(t)
+	defer ctrl.Finish()
+	mockService.EXPECT().
+		AddProperties(gomock.Any(), "test-app", "default", map[string]string{"a.b": "x"}).
+		Return(nil)
+
+	resp, err := newAddPropertiesApp(controller).Test(newJSONPost(`{"a.b": "x"}`))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+}
+
 func newAddPropertiesApp(controller *ConfigController) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: FiberErrorHandler,
