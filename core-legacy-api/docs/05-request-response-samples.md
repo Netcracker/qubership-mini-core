@@ -361,18 +361,18 @@ GET /main/myapp-dev.yml HTTP/1.1
 **Response**
 
 ```yaml
-server:
-  host: localhost
-  port: '8080'
 app:
-  url: http://localhost:8080
-servers:
-- alpha
-- beta
+    url: http://localhost:8080
 db: primary
 db.url: jdbc:postgresql://localhost:5432/myapp
+server:
+    host: localhost
+    port: '8080'
+servers:
+    - alpha
+    - beta
 tags: x
-tags[0]: y
+tags[0]: 'y'
 ```
 
 **With `resolvePlaceholders=false`**
@@ -385,7 +385,7 @@ Only this value changes:
 
 ```yaml
 app:
-  url: http://${server.host}:${server.port}
+    url: http://${server.host}:${server.port}
 ```
 
 ---
