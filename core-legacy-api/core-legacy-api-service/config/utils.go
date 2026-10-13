@@ -1,7 +1,10 @@
 package config
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -618,6 +621,41 @@ func GetFiberParam(fiberCtx *fiber.Ctx, paramName string) string {
 		return utils.CopyString(paramValue)
 	}
 	return utils.CopyString(unescapedStr)
+}
+
+func propertyValuesAsText(rawProperties map[string]json.RawMessage) (map[string]string, error) {
+	properties := make(map[string]string, len(rawProperties))
+	for key, value := range rawProperties {
+		text, err := propertyValueAsText(value)
+		if err != nil {
+			return nil, fmt.Errorf("property %q: %w", key, err)
+		}
+		properties[key] = text
+	}
+	return properties, nil
+}
+
+func propertyValueAsText(value json.RawMessage) (string, error) {
+	decoder := json.NewDecoder(bytes.NewReader(value))
+	decoder.UseNumber()
+
+	var decoded any
+	if err := decoder.Decode(&decoded); err != nil {
+		return "", err
+	}
+
+	switch typed := decoded.(type) {
+	case string:
+		return typed, nil
+	case json.Number:
+		return typed.String(), nil
+	case bool:
+		return strconv.FormatBool(typed), nil
+	case nil:
+		return "", nil
+	default:
+		return "", errors.New("value must be a string, a number, a boolean or null")
+	}
 }
 
 func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error) {

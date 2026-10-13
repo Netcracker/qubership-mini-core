@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -238,11 +239,15 @@ func (ctrl *ConfigController) AddProperties(c *fiber.Ctx) error {
 	application := GetFiberParam(c, "application")
 	profile := GetFiberParam(c, "profile")
 
-	newProperties := make(map[string]string)
+	rawProperties := make(map[string]json.RawMessage)
 	ctrl.logger.InfoC(ctx, "Adding properties for application=%s, profile=%s", application, profile)
-	err := c.BodyParser(&newProperties)
+	err := c.BodyParser(&rawProperties)
 	if err != nil {
 		return LogError(ctrl.logger, ctx, "failed to parse request body for application=%s profile=%s: %w", application, profile, ErrBadRequest)
+	}
+	newProperties, err := propertyValuesAsText(rawProperties)
+	if err != nil {
+		return LogError(ctrl.logger, ctx, "invalid property value for application=%s profile=%s: %v: %w", application, profile, err, ErrBadRequest)
 	}
 	err = ctrl.sv.AddProperties(ctx, application, profile, newProperties)
 	if err != nil {
