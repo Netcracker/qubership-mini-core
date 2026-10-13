@@ -489,6 +489,61 @@ func TestAddProperties_BadRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+func TestAddProperties_ScalarValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{name: "string is stored unquoted", body: `{"key": "value"}`, expected: "value"},
+		{name: "integer keeps its literal", body: `{"key": 8080}`, expected: "8080"},
+		{name: "decimal keeps its literal", body: `{"key": 1.50}`, expected: "1.50"},
+		{name: "boolean keeps its literal", body: `{"key": true}`, expected: "true"},
+		{name: "null is stored as empty string", body: `{"key": null}`, expected: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				AddProperties(gomock.Any(), "test-app", "default", map[string]string{"key": tt.expected}).
+				Return(nil)
+
+			resp, err := newAddPropertiesApp(controller).Test(newJSONPost(tt.body))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusCreated, resp.StatusCode)
+		})
+	}
+}
+
+func TestAddProperties_RejectsNonScalarValues(t *testing.T) {
+	for _, body := range []string{`{"key": {"nested": "x"}}`, `{"key": ["a", "b"]}`} {
+		t.Run(body, func(t *testing.T) {
+			controller, _, ctrl := newTestController(t)
+			defer ctrl.Finish()
+
+			resp, err := newAddPropertiesApp(controller).Test(newJSONPost(body))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		})
+	}
+}
+
+func newAddPropertiesApp(controller *ConfigController) *fiber.App {
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Post("/:application/:profile", controller.AddProperties)
+	return app
+}
+
+func newJSONPost(body string) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, "/test-app/default", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
 func TestDeleteProperties_OK(t *testing.T) {
 	controller, mockService, ctrl := newTestController(t)
 	defer ctrl.Finish()
