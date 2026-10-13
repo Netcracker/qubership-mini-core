@@ -59,7 +59,7 @@ spec:
         - name: client-credentials
           secret:
             secretName: '{{ .Values.SERVICE_NAME }}-client-credentials'
-{{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+{{ if and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
         - name: tmp
           emptyDir: { }
         - name: sslcerts
@@ -103,7 +103,7 @@ spec:
             - name: client-credentials
               mountPath: '/etc/secret'
               readOnly: true
-{{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+{{ if and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
             - name: tmp
               mountPath: /tmp
             - name: sslcerts
@@ -221,7 +221,7 @@ spec:
             runAsUser: 10001
             runAsGroup: 10001
 {{ end }}
-            readOnlyRootFilesystem: {{ .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+            readOnlyRootFilesystem: {{ and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
