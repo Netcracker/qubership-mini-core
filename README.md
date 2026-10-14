@@ -34,7 +34,7 @@ The parameters below configure the service itself.
 | Parameter | Default | Purpose |
 | --- | --- | --- |
 | `CONSUL_URL` | none | URL of the Consul server that stores the properties. The service does not start without it. |
-| `BASELINE_PROJ` | none | Namespace of a config-server whose `global` properties `tenant.default.id` and `bss.tenant.default-id` are copied to `global` when `global` does not have them. Unset skips the copy. |
+| `BASELINE_PROJ` | none | Namespace of a config-server whose `global` properties `tenant.default.id` and `bss.tenant.default-id` are copied to `global` when `global` does not have them. Unset, or an unreachable config-server, skips the copy. |
 | `LOG_LEVEL` | `info` | Log level. |
 | `TRACING_ENABLED` | `false` | Sends traces to `TRACING_HOST`. |
 | `TRACING_HOST` | `nc-diagnostic-agent` | Tracing collector host. |

@@ -168,7 +168,8 @@ func InitializeBaselineProperties(ctx context.Context, s ConfigService) error {
 		"default",
 	)
 	if err != nil {
-		return fmt.Errorf("failed to fetch baseline properties: %w", err)
+		logger.WarnC(ctx, "Skipping baseline properties: failed to fetch them from baseline project %q: %v", baselineProj, err)
+		return nil
 	}
 
 	// Select only properties configured in BASELINE_FETCH_PROPERTIES.
