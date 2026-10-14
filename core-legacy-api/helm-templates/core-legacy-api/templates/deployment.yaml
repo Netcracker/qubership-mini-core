@@ -213,7 +213,7 @@ spec:
             timeoutSeconds: {{ ternary 5 .Values.PROBE_READINESS_TIMEOUT_SECONDS (lt (int .Values.PROBE_READINESS_TIMEOUT_SECONDS) 0) }}
             periodSeconds: {{ ternary 10 .Values.PROBE_READINESS_PERIOD_SECONDS (lt (int .Values.PROBE_READINESS_PERIOD_SECONDS) 0) }}
             successThreshold: {{ ternary 1 .Values.PROBE_READINESS_SUCCESS_THRESHOLD (lt (int .Values.PROBE_READINESS_SUCCESS_THRESHOLD) 0) }}
-            failureThreshold: {{ ternary 20 .Values.PROBE_READINESS_FAILURE_THRESHOLD (lt (int .Values.PROBE_READINESS_FAILURE_THRESHOLD) 0) }}
+            failureThreshold: {{ ternary 3 .Values.PROBE_READINESS_FAILURE_THRESHOLD (lt (int .Values.PROBE_READINESS_FAILURE_THRESHOLD) 0) }}
           startupProbe:
             httpGet:
               path: /health
