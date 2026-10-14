@@ -12,7 +12,6 @@
     {
       "PAAS_PLATFORM": "KUBERNETES",
       "ALLOWED_HEADERS": "",
-      "CERTIFICATE_BUNDLE_MD5SUM": "d41d8cd98f00b204e9800998ecf8427e",
       "CLOUD_API_HOST": "",
       "CLOUD_API_PORT": "6443",
       "CLOUD_PROTOCOL": "https",
@@ -33,7 +32,6 @@
       "PRIVATE_GATEWAY_URL": "",
       "PUBLIC_GATEWAY_URL": "",
       "REPLICAS": 1,
-      "SSL_SECRET": "defaultsslcertificate",
       "TAG": "",
       "TRACING_ENABLED": false,
       "TRACING_HOST": "nc-diagnostic-agent",
@@ -153,15 +151,6 @@
       "examples": [
         "x-request-id,acceptlanguage"
       ]
-    },
-    "CERTIFICATE_BUNDLE_MD5SUM": {
-      "$id": "#/properties/CERTIFICATE_BUNDLE_MD5SUM",
-      "type": "string",
-      "title": "The CERTIFICATE_BUNDLE_MD5SUM schema",
-      "examples": [
-        "d41d8cd98f00b204e9800998ecf8427e"
-      ],
-      "internal": true
     },
     "CLOUD_API_HOST": {
       "$id": "#/properties/CLOUD_API_HOST",
@@ -303,16 +292,6 @@
       "envSpecific": true,
       "internal": true,
       "title": "The REPLICAS schema"
-    },
-    "SSL_SECRET": {
-      "$id": "#/properties/SSL_SECRET",
-      "type": "string",
-      "title": "The SSL_SECRET schema",
-      "description": "SSL secret name.",
-      "examples": [
-        "defaultsslcertificate"
-      ],
-      "internal": true
     },
     "TAG": {
       "$id": "#/properties/TAG",

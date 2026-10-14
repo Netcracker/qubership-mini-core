@@ -64,9 +64,6 @@ spec:
         - name: cacerts
           emptyDir: { }
 {{ end }}
-        - name: "{{ .Values.SSL_SECRET }}"
-          secret:
-            secretName: "{{ .Values.SSL_SECRET }}"
         - name: projected-tokens
           projected:
             defaultMode: 292
@@ -105,9 +102,6 @@ spec:
             - name: cacerts
               mountPath: /usr/local/share/ca-certificates
 {{ end }}
-            - name: "{{ .Values.SSL_SECRET }}"
-              mountPath: "/tmp/cert/{{ .Values.SSL_SECRET }}"
-              readOnly: true
             - name: pod-secrets
               mountPath: /etc/secrets/pod-secrets
               readOnly: true
@@ -126,8 +120,6 @@ spec:
           env:
             - name: KUBERNETES_M2M_ENABLED
               value: '{{ .Values.KUBERNETES_M2M_ENABLED }}'
-            - name: CERTIFICATE_BUNDLE_{{ .Values.SSL_SECRET }}_MD5SUM
-              value: '{{ .Values.CERTIFICATE_BUNDLE_MD5SUM }}'
             - name: MICROSERVICE_NAME
               value: '{{ .Values.SERVICE_NAME }}'
             - name: CLOUD_NAMESPACE
