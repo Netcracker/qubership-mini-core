@@ -79,3 +79,30 @@ func (s *ConsulServiceTestSuite) TestInitDefaultPropertiesKeepsValuesChangedAfte
 	s.Require().NoError(err)
 	s.Equal("changed", propertiesAsMap(profile)["default_credentials.tenant-manager.password"])
 }
+
+func (s *ConsulServiceTestSuite) TestInitDefaultPropertiesKeepsValuesStoredBeforeFirstRun() {
+	s.Require().NoError(s.consulService.AddProperties(s.ctx, "tenant-manager", defaultProfileName, map[string]string{
+		"default_credentials.tenant-manager.password": "changed",
+	}))
+
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+
+	profile, err := s.consulService.FindByApplicationAndProfile(s.ctx, "tenant-manager", defaultProfileName)
+	s.Require().NoError(err)
+	properties := propertiesAsMap(profile)
+	s.Equal("changed", properties["default_credentials.tenant-manager.password"])
+	s.Equal("tenant", properties["default_credentials.tenant-manager.user"])
+}
+
+func (s *ConsulServiceTestSuite) TestInitDefaultPropertiesRestoresMissingDefaults() {
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+	s.Require().NoError(s.consulService.DeleteProperties(s.ctx, "tenant-manager", defaultProfileName, []string{
+		"default_credentials.tenant-manager.user",
+	}))
+
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+
+	profile, err := s.consulService.FindByApplicationAndProfile(s.ctx, "tenant-manager", defaultProfileName)
+	s.Require().NoError(err)
+	s.Equal("tenant", propertiesAsMap(profile)["default_credentials.tenant-manager.user"])
+}
