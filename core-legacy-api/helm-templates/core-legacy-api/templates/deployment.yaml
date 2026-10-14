@@ -56,9 +56,6 @@ spec:
     spec:
       serviceAccountName: '{{ .Values.SERVICE_NAME }}'
       volumes:
-        - name: client-credentials
-          secret:
-            secretName: '{{ .Values.SERVICE_NAME }}-client-credentials'
 {{ if and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
         - name: tmp
           emptyDir: { }
@@ -100,9 +97,6 @@ spec:
         - name: '{{ .Values.SERVICE_NAME }}'
           image: '{{ .Values.IMAGE_REPOSITORY }}:{{ .Values.TAG }}'
           volumeMounts:
-            - name: client-credentials
-              mountPath: '/etc/secret'
-              readOnly: true
 {{ if and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
             - name: tmp
               mountPath: /tmp
