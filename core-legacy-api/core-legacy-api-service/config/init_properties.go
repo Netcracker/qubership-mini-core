@@ -16,20 +16,7 @@ import (
 
 var logger = logging.GetLogger("Initialization")
 
-const defaultPropertiesMarkerKey = "default_properties_initialized"
-
 func InitializeDefaultProperties(ctx context.Context, s ConfigService) error {
-	// Check whether the default properties have already been initialized.
-	initialized, err := isDefaultPropertiesInitialized(ctx, s)
-	if err != nil {
-		logger.ErrorC(ctx, "Failed to check default properties initialization: %v", err)
-		return err
-	}
-	if initialized {
-		logger.InfoC(ctx, "Default properties are already initialized, skipping initialization")
-		return nil
-	}
-
 	// Initialize the global default properties required by the system.
 	if err := InitializeGlobalDefaultProperties(ctx, s); err != nil {
 		return err
@@ -49,25 +36,28 @@ func InitializeDefaultProperties(ctx context.Context, s ConfigService) error {
 	}
 
 	// Initialize default properties for DMP Tenant Activator.
-	if err := InitializeDmpTenantActivatorDefaultProperties(ctx, s); err != nil {
-		return err
-	}
-
-	// Mark the default properties as initialized to prevent repeated initialization.
-	return s.AddProperties(ctx, "config-server", defaultProfileName, map[string]string{
-		defaultPropertiesMarkerKey: "true",
-	})
+	return InitializeDmpTenantActivatorDefaultProperties(ctx, s)
 }
 
-func isDefaultPropertiesInitialized(ctx context.Context, s ConfigService) (bool, error) {
-	profile, err := s.FindByApplicationAndProfile(ctx, "config-server", defaultProfileName)
+func addMissingProperties(ctx context.Context, s ConfigService, application string, profile string, properties map[string]string) error {
+	stored, err := s.FindByApplicationAndProfile(ctx, application, profile)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if value, ok := profile.GetPropertiesAsMap()[defaultPropertiesMarkerKey]; ok {
-		return value.Value == "true", nil
+	storedProperties := stored.GetPropertiesAsMap()
+
+	missingProperties := make(map[string]string)
+	for key, value := range properties {
+		if _, exists := storedProperties[key]; !exists {
+			missingProperties[key] = value
+		}
 	}
-	return false, nil
+	if len(missingProperties) == 0 {
+		return nil
+	}
+
+	logger.InfoC(ctx, "Adding %d missing default properties for application=%s profile=%s", len(missingProperties), application, profile)
+	return s.AddProperties(ctx, application, profile, missingProperties)
 }
 
 func InitializeGlobalDefaultProperties(ctx context.Context, s ConfigService) error {
@@ -155,7 +145,7 @@ func InitializeGlobalDefaultProperties(ctx context.Context, s ConfigService) err
 		properties["headers.allowed"] = allowedHeaders
 	}
 
-	return s.AddProperties(ctx, configPropertiesGlobalApplicationName, defaultProfileName, properties)
+	return addMissingProperties(ctx, s, configPropertiesGlobalApplicationName, defaultProfileName, properties)
 }
 
 func InitializeBaselineProperties(ctx context.Context, s ConfigService) error {
@@ -195,9 +185,10 @@ func InitializeBaselineProperties(ctx context.Context, s ConfigService) error {
 		return nil
 	}
 
-	// Update/insert them into our global/default profile.
-	return s.AddProperties(
+	// Add the ones missing from our global/default profile.
+	return addMissingProperties(
 		ctx,
+		s,
 		configPropertiesGlobalApplicationName,
 		defaultProfileName,
 		propertiesToMigrate,
@@ -281,8 +272,9 @@ func InitializeTenantManagerDefaultProperties(ctx context.Context, s ConfigServi
 		"default_credentials.tenant-manager.auth-db":  "tenants",
 		"default_credentials.dbaas.auth-db":           "",
 	}
-	return s.AddProperties(
+	return addMissingProperties(
 		ctx,
+		s,
 		"tenant-manager",
 		defaultProfileName,
 		properties,
@@ -294,8 +286,9 @@ func InitializeDmpTenantActivatorDefaultProperties(ctx context.Context, s Config
 	properties := map[string]string{
 		"tenant.shoppingFrontend.templateName": "qubership-cloud-shopping-frontend",
 	}
-	return s.AddProperties(
+	return addMissingProperties(
 		ctx,
+		s,
 		"dmp-tenant-activator",
 		defaultProfileName,
 		properties,

@@ -10,8 +10,9 @@ Each application and profile is a Consul KV prefix: `config/<namespace>/<applica
 `config/<namespace>/<application>,<profile>/` for any other profile. The `global` application, whose properties every
 application receives, is stored as `config/<namespace>/application/`.
 
-On the first start, the service writes default properties for `global`, `tenant-manager`, and `dmp-tenant-activator`,
-and copies selected properties from a baseline config-server when `BASELINE_PROJ` is set. See
+On every start, the service adds the missing default properties for `global`, `tenant-manager`, and
+`dmp-tenant-activator`, and copies selected properties from a baseline config-server when `BASELINE_PROJ` is set.
+Properties that are already stored keep their values. See
 [Startup initialization](core-legacy-api/docs/00-startup-initialization.md).
 
 ## API differences
@@ -33,15 +34,15 @@ The parameters below configure the service itself.
 | Parameter | Default | Purpose |
 | --- | --- | --- |
 | `CONSUL_URL` | none | URL of the Consul server that stores the properties. The service does not start without it. |
-| `BASELINE_PROJ` | none | Namespace of a config-server whose `global` properties `tenant.default.id` and `bss.tenant.default-id` are copied to `global` on the first start. Unset skips the copy. |
+| `BASELINE_PROJ` | none | Namespace of a config-server whose `global` properties `tenant.default.id` and `bss.tenant.default-id` are copied to `global` when `global` does not have them. Unset skips the copy. |
 | `LOG_LEVEL` | `info` | Log level. |
 | `TRACING_ENABLED` | `false` | Sends traces to `TRACING_HOST`. |
 | `TRACING_HOST` | `nc-diagnostic-agent` | Tracing collector host. |
 | `TRACING_SAMPLER_PROBABILISTIC` | `0.01` | Share of requests that are traced. |
 | `HTTP_BUFFER_HEADER_MAX_SIZE` | `10240` | Largest request header the service accepts, in bytes. Also written to `global` as `http.buffer.header.max.size`. |
 
-These parameters only set default properties on the first start. The properties go to `global`, and
-`openshift.server.url` also goes to `tenant-manager`, where it takes precedence over `global`:
+These parameters only set default properties, which are written when the property is not stored yet. The properties
+go to `global`, and `openshift.server.url` also goes to `tenant-manager`, where it takes precedence over `global`:
 
 | Parameter | Default | Property |
 | --- | --- | --- |
