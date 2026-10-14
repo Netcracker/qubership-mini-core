@@ -87,6 +87,7 @@ spec:
                           path: EMAIL_PASSWORD
             - secret:
                       name: config-server-consul-token
+                      optional: true
                       items:
                         - key: token
                           path: CONSUL_TOKEN
