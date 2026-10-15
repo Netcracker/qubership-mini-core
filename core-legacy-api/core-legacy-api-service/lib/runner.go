@@ -84,8 +84,7 @@ func RunService() {
 	})
 
 	readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)
-	app.Get("/health", createProbeEndpoint(healthService))
-	app.Get("/readiness", createProbeEndpoint(readinessService))
+	registerProbeEndpoints(app, healthService, readinessService)
 
 	configController := config.NewConfigPropertiesController(consulService)
 	// swagger
@@ -138,6 +137,13 @@ func registerShutdownHooks() {
 			hook()
 		}
 	}()
+}
+
+func registerProbeEndpoints(app *fiber.App, healthService, readinessService health.HealthService) {
+	healthEndpoint := createProbeEndpoint(healthService)
+	readinessEndpoint := createProbeEndpoint(readinessService)
+	app.Get("/health", healthEndpoint)
+	app.Get("/readiness", readinessEndpoint)
 }
 
 func createProbeEndpoint(service health.HealthService) fiber.Handler {
