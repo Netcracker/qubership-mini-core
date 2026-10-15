@@ -24,6 +24,7 @@ Properties that are already stored keep their values. See
 | [Why writes take no lock](core-legacy-api/docs/03-why-writes-take-no-lock.md) | Concurrent writes to one application and profile |
 | [Array keys](core-legacy-api/docs/04-array-keys.md) | Keys such as `list[0]` in the JSON and YAML formats |
 | [Request and response samples](core-legacy-api/docs/05-request-response-samples.md) | One request and response per endpoint |
+| [Replacing config-server](core-legacy-api/docs/06-replacing-config-server.md) | What a deployment that replaces config-server with `core-legacy-api` has to check: Kubernetes resource names, Consul access, Helm parameters, endpoints, API behavior, metrics, health, and tracing |
 
 ## Deployment parameters
 
