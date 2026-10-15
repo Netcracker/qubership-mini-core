@@ -11,7 +11,7 @@ SERVICE_NAME: "core-legacy-api"
 
 TRACING_ENABLED: false
 TRACING_HOST: 'nc-diagnostic-agent'
-TRACING_SAMPLER_PROBABILISTIC: 0.01
+TRACING_SAMPLER_RATELIMITING: 10
 
 ALLOWED_HEADERS: ''
 CLOUD_ADMIN_EMAIL: "TestTenantManagementGroup@qubership.org"

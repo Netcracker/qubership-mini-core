@@ -38,7 +38,7 @@ The parameters below configure the service itself.
 | `LOG_LEVEL` | `info` | Log level. |
 | `TRACING_ENABLED` | `false` | Sends traces to `TRACING_HOST`. |
 | `TRACING_HOST` | `nc-diagnostic-agent` | Tracing collector host. |
-| `TRACING_SAMPLER_PROBABILISTIC` | `0.01` | Share of requests that are traced. |
+| `TRACING_SAMPLER_RATELIMITING` | `10` | Largest number of traces per second, a whole number. |
 | `HTTP_BUFFER_HEADER_MAX_SIZE` | `10240` | Largest request header the service accepts, in bytes. Also written to `global` as `http.buffer.header.max.size`. |
 
 These parameters only set default properties, which are written when the property is not stored yet. The properties

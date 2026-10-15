@@ -35,7 +35,7 @@
       "TAG": "",
       "TRACING_ENABLED": false,
       "TRACING_HOST": "nc-diagnostic-agent",
-      "TRACING_SAMPLER_PROBABILISTIC": 1.0,
+      "TRACING_SAMPLER_RATELIMITING": 10,
       "ARTIFACT_DESCRIPTOR_VERSION": "",
       "MONITORING_ENABLED": false,
       "CLOUD_TOPOLOGY_KEY": "kubernetes.io/hostname",
@@ -315,12 +315,12 @@
       "description": "Tracing server host",
       "default": "nc-diagnostic-agent"
     },
-    "TRACING_SAMPLER_PROBABILISTIC": {
-      "$id": "#/properties/TRACING_SAMPLER_PROBABILISTIC",
-      "type": "number",
-      "title": "The TRACING_SAMPLER_PROBABILISTIC schema",
-      "description": "The percentage of requests that will be traced",
-      "default": 0.01
+    "TRACING_SAMPLER_RATELIMITING": {
+      "$id": "#/properties/TRACING_SAMPLER_RATELIMITING",
+      "$ref": "#/definitions/integerOrString",
+      "default": 10,
+      "description": "The rate for requests sampling (number of traces per second)",
+      "title": "The TRACING_SAMPLER_RATELIMITING schema"
     },
     "ARTIFACT_DESCRIPTOR_VERSION": {
       "$id": "#/properties/ARTIFACT_DESCRIPTOR_VERSION",

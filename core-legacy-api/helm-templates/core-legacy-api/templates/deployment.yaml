@@ -135,8 +135,8 @@ spec:
               value: '{{ .Values.TRACING_ENABLED }}'
             - name: TRACING_HOST
               value: '{{ .Values.TRACING_HOST }}'
-            - name: TRACING_SAMPLER_PROBABILISTIC
-              value: '{{ .Values.TRACING_SAMPLER_PROBABILISTIC }}'
+            - name: TRACING_SAMPLER_RATELIMITING
+              value: '{{ .Values.TRACING_SAMPLER_RATELIMITING }}'
             - name: LOG_LEVEL
               value: '{{ .Values.LOG_LEVEL }}'
             - name: ALLOWED_HEADERS
