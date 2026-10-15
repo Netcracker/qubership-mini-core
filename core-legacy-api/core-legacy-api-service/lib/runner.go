@@ -143,7 +143,9 @@ func registerProbeEndpoints(app *fiber.App, healthService, readinessService heal
 	healthEndpoint := createProbeEndpoint(healthService)
 	readinessEndpoint := createProbeEndpoint(readinessService)
 	app.Get("/health", healthEndpoint)
+	app.Get("/health/liveness", healthEndpoint)
 	app.Get("/readiness", readinessEndpoint)
+	app.Get("/health/readiness", readinessEndpoint)
 }
 
 func createProbeEndpoint(service health.HealthService) fiber.Handler {
