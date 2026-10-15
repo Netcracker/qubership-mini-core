@@ -489,6 +489,112 @@ func TestAddProperties_BadRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+func TestAddProperties_ScalarValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{name: "string is stored unquoted", body: `{"key": "value"}`, expected: "value"},
+		{name: "integer keeps its literal", body: `{"key": 8080}`, expected: "8080"},
+		{name: "decimal keeps its literal", body: `{"key": 1.50}`, expected: "1.50"},
+		{name: "boolean keeps its literal", body: `{"key": true}`, expected: "true"},
+		{name: "null is stored as empty string", body: `{"key": null}`, expected: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				AddProperties(gomock.Any(), "test-app", "default", map[string]string{"key": tt.expected}).
+				Return(nil)
+
+			resp, err := newAddPropertiesApp(controller).Test(newJSONPost(tt.body))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusCreated, resp.StatusCode)
+		})
+	}
+}
+
+func TestAddProperties_RejectsNonScalarValues(t *testing.T) {
+	for _, body := range []string{`{"key": {"nested": "x"}}`, `{"key": ["a", "b"]}`} {
+		t.Run(body, func(t *testing.T) {
+			controller, _, ctrl := newTestController(t)
+			defer ctrl.Finish()
+
+			resp, err := newAddPropertiesApp(controller).Test(newJSONPost(body))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		})
+	}
+}
+
+func TestAddProperties_RejectsKeysStartingWithDot(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{
+			name:     "one key",
+			body:     `{".foo": "x"}`,
+			expected: "Property keys with errors: \n.foo start with dot\n",
+		},
+		{
+			name:     "several keys are listed sorted by name",
+			body:     `{".b": "x", ".a": "y"}`,
+			expected: "Property keys with errors: \n.a start with dot\n.b start with dot\n",
+		},
+		{
+			name:     "valid key in the same request is not written",
+			body:     `{".foo": "x", "bar": "y"}`,
+			expected: "Property keys with errors: \n.foo start with dot\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller, _, ctrl := newTestController(t)
+			defer ctrl.Finish()
+
+			resp, err := newAddPropertiesApp(controller).Test(newJSONPost(tt.body))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			assert.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+			body, err := io.ReadAll(resp.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, string(body))
+		})
+	}
+}
+
+func TestAddProperties_AcceptsDotInsideKey(t *testing.T) {
+	controller, mockService, ctrl := newTestController(t)
+	defer ctrl.Finish()
+	mockService.EXPECT().
+		AddProperties(gomock.Any(), "test-app", "default", map[string]string{"a.b": "x"}).
+		Return(nil)
+
+	resp, err := newAddPropertiesApp(controller).Test(newJSONPost(`{"a.b": "x"}`))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+}
+
+func newAddPropertiesApp(controller *ConfigController) *fiber.App {
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Post("/:application/:profile", controller.AddProperties)
+	return app
+}
+
+func newJSONPost(body string) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, "/test-app/default", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
 func TestDeleteProperties_OK(t *testing.T) {
 	controller, mockService, ctrl := newTestController(t)
 	defer ctrl.Finish()
@@ -612,6 +718,99 @@ func TestGetApplicationsAndProfiles_MultipleApplications(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result), 2)
 }
 
+func TestFindOne_ReplacesSlashPlaceholderInNameAndLabel(t *testing.T) {
+	controller, mockService, ctrl := newTestController(t)
+	defer ctrl.Finish()
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+		Return(model.ConfigProfile{}, nil)
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), "team/a/app", "dev").
+		Return(model.ConfigProfile{}, nil)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Get("/:application/:profile/:label", controller.FindOne)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/team(_)a(_)app/dev/feature(_)x(_)y", nil))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var env model.Environment
+	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+	assert.Equal(t, "team/a/app", env.Name)
+	if assert.NotNil(t, env.Label) {
+		assert.Equal(t, "feature/x/y", *env.Label)
+	}
+}
+
+func TestFindOneFileFormats_ReplaceSlashPlaceholderInName(t *testing.T) {
+	for _, ext := range []string{"json", "properties", "yaml"} {
+		t.Run(ext, func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+				Return(model.ConfigProfile{}, nil)
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), "team/a/app", "dev").
+				Return(model.ConfigProfile{}, nil)
+
+			resp, err := newFileFormatsApp(controller).Test(httptest.NewRequest(http.MethodGet, "/team(_)a(_)app-dev."+ext, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	}
+}
+
+func TestFindOneFileFormats_RejectInvalidRequests(t *testing.T) {
+	circularGlobal := model.ConfigProfile{
+		Application: consulGlobalApplicationName,
+		Profile:     defaultProfileName,
+		Properties: []model.ConfigProperty{
+			{Key: "a", Value: "${b}"},
+			{Key: "b", Value: "${a}"},
+		},
+	}
+
+	for _, ext := range []string{"json", "properties", "yaml"} {
+		t.Run(ext+" name without profiles is not found", func(t *testing.T) {
+			controller, _, ctrl := newTestController(t)
+			defer ctrl.Finish()
+
+			resp, err := newFileFormatsApp(controller).Test(httptest.NewRequest(http.MethodGet, "/test."+ext, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+		})
+
+		t.Run(ext+" circular placeholder is a bad request", func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+				Return(circularGlobal, nil)
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), "test-app", "dev").
+				Return(model.ConfigProfile{}, nil)
+
+			resp, err := newFileFormatsApp(controller).Test(httptest.NewRequest(http.MethodGet, "/test-app-dev."+ext, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		})
+	}
+}
+
+func newFileFormatsApp(controller *ConfigController) *fiber.App {
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Get("/:nameAndProfiles.json", controller.FindOneJSON)
+	app.Get("/:nameAndProfiles.properties", controller.FindOneProperties)
+	app.Get("/:nameAndProfiles.yaml", controller.FindOneYaml)
+	return app
+}
+
 func TestFindOne_WithMultipleProfiles(t *testing.T) {
 	controller, mockService, ctrl := newTestController(t)
 	defer ctrl.Finish()
@@ -661,6 +860,34 @@ func TestFindOne_WithMultipleProfiles(t *testing.T) {
 	json.NewDecoder(resp.Body).Decode(&env)
 	assert.Equal(t, "test-app", env.Name)
 	assert.Equal(t, []string{"dev"}, env.Profiles)
+}
+
+func TestFindOne_ReturnsEachRequestedProfile(t *testing.T) {
+	controller, mockService, ctrl := newTestController(t)
+	defer ctrl.Finish()
+
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+		Return(model.ConfigProfile{}, nil)
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), "test-app", "dev").
+		Return(model.ConfigProfile{}, nil)
+	mockService.EXPECT().
+		FindByApplicationAndProfile(gomock.Any(), "test-app", "prod").
+		Return(model.ConfigProfile{}, nil)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: FiberErrorHandler,
+	})
+	app.Get("/:application/:profile", controller.FindOne)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/test-app/dev,prod", nil))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var env model.Environment
+	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+	assert.Equal(t, []string{"dev", "prod"}, env.Profiles)
 }
 
 func TestFindOne_WithoutLabel(t *testing.T) {

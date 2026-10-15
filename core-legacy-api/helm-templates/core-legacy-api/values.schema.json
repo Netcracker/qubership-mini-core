@@ -12,7 +12,6 @@
     {
       "PAAS_PLATFORM": "KUBERNETES",
       "ALLOWED_HEADERS": "",
-      "CERTIFICATE_BUNDLE_MD5SUM": "d41d8cd98f00b204e9800998ecf8427e",
       "CLOUD_API_HOST": "",
       "CLOUD_API_PORT": "6443",
       "CLOUD_PROTOCOL": "https",
@@ -33,11 +32,10 @@
       "PRIVATE_GATEWAY_URL": "",
       "PUBLIC_GATEWAY_URL": "",
       "REPLICAS": 1,
-      "SSL_SECRET": "defaultsslcertificate",
       "TAG": "",
       "TRACING_ENABLED": false,
       "TRACING_HOST": "nc-diagnostic-agent",
-      "TRACING_SAMPLER_PROBABILISTIC": 1.0,
+      "TRACING_SAMPLER_RATELIMITING": 10,
       "ARTIFACT_DESCRIPTOR_VERSION": "",
       "MONITORING_ENABLED": false,
       "CLOUD_TOPOLOGY_KEY": "kubernetes.io/hostname",
@@ -153,15 +151,6 @@
       "examples": [
         "x-request-id,acceptlanguage"
       ]
-    },
-    "CERTIFICATE_BUNDLE_MD5SUM": {
-      "$id": "#/properties/CERTIFICATE_BUNDLE_MD5SUM",
-      "type": "string",
-      "title": "The CERTIFICATE_BUNDLE_MD5SUM schema",
-      "examples": [
-        "d41d8cd98f00b204e9800998ecf8427e"
-      ],
-      "internal": true
     },
     "CLOUD_API_HOST": {
       "$id": "#/properties/CLOUD_API_HOST",
@@ -304,16 +293,6 @@
       "internal": true,
       "title": "The REPLICAS schema"
     },
-    "SSL_SECRET": {
-      "$id": "#/properties/SSL_SECRET",
-      "type": "string",
-      "title": "The SSL_SECRET schema",
-      "description": "SSL secret name.",
-      "examples": [
-        "defaultsslcertificate"
-      ],
-      "internal": true
-    },
     "TAG": {
       "$id": "#/properties/TAG",
       "type": "string",
@@ -336,12 +315,12 @@
       "description": "Tracing server host",
       "default": "nc-diagnostic-agent"
     },
-    "TRACING_SAMPLER_PROBABILISTIC": {
-      "$id": "#/properties/TRACING_SAMPLER_PROBABILISTIC",
-      "type": "number",
-      "title": "The TRACING_SAMPLER_PROBABILISTIC schema",
-      "description": "The percentage of requests that will be traced",
-      "default": 0.01
+    "TRACING_SAMPLER_RATELIMITING": {
+      "$id": "#/properties/TRACING_SAMPLER_RATELIMITING",
+      "$ref": "#/definitions/integerOrString",
+      "default": 10,
+      "description": "The rate for requests sampling (number of traces per second)",
+      "title": "The TRACING_SAMPLER_RATELIMITING schema"
     },
     "ARTIFACT_DESCRIPTOR_VERSION": {
       "$id": "#/properties/ARTIFACT_DESCRIPTOR_VERSION",
@@ -403,6 +382,34 @@
       "title": "The CONSUL_URL schema",
       "description": "Consul URL",
       "internal": true
+    },
+    "CONSUL_AUTH_MODE": {
+      "$id": "#/properties/CONSUL_AUTH_MODE",
+      "type": "string",
+      "title": "The CONSUL_AUTH_MODE schema",
+      "description": "Way the Consul ACL token is obtained: kubernetes-with-m2m-fallback, kubernetes or m2m. Empty means the library default",
+      "envSpecific": true
+    },
+    "CONSUL_AUTH_METHOD": {
+      "$id": "#/properties/CONSUL_AUTH_METHOD",
+      "type": "string",
+      "title": "The CONSUL_AUTH_METHOD schema",
+      "description": "Name of the Consul auth method the projected Kubernetes token is presented to. Empty means the library default",
+      "envSpecific": true
+    },
+    "CONSUL_AUTH_AUDIENCE": {
+      "$id": "#/properties/CONSUL_AUTH_AUDIENCE",
+      "type": "string",
+      "title": "The CONSUL_AUTH_AUDIENCE schema",
+      "description": "Audience of the projected Kubernetes token the pod sends. Empty means the library default",
+      "envSpecific": true
+    },
+    "CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL": {
+      "$id": "#/properties/CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL",
+      "type": "string",
+      "title": "The CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL schema",
+      "description": "Lower bound on how often the m2m fallback retries the Kubernetes login. Empty means the library default",
+      "envSpecific": true
     },
     "BASELINE_PROJ": {
       "$id": "#/properties/BASELINE_PROJ",
@@ -734,13 +741,14 @@
       "title": "The PROBE_READINESS_SUCCESS_THRESHOLD scheme",
       "type": "integer"
     },
-    "KUBERNETES_M2M_ENABLED": {
-      "$id": "#/properties/KUBERNETES_M2M_ENABLED",
-      "type": "boolean",
-      "title": "The KUBERNETES_M2M_ENABLED schema",
-      "description": "Shows that kubernetes m2m communication is enabled.",
+    "M2M_AUTH_MODE": {
+      "$id": "#/properties/M2M_AUTH_MODE",
+      "type": "string",
+      "title": "The M2M_AUTH_MODE schema",
+      "description": "Machine-to-machine authentication mode: legacy, hybrid, or k8s",
+      "enum": ["legacy", "hybrid", "k8s"],
       "internal": true,
-      "default": false
+      "default": "legacy"
     }
   },
   "additionalProperties": true

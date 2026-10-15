@@ -30,4 +30,4 @@ A lock was required to keep the set of keys from changing between the check and 
 
 ## Why It Is No Longer Required
 
-`core-legacy-api` allows conflicting keys to be stored (see [Conflicting Property Keys](#conflicting-property-keys)). Since the conflict validation is no longer performed, there is no read-modify-write sequence, and therefore no need for a lock.
+`core-legacy-api` allows conflicting keys to be stored (see [Conflicting Property Keys](02-conflicting-property-keys.md)). Since the conflict validation is no longer performed, there is no read-modify-write sequence, and therefore no need for a lock.

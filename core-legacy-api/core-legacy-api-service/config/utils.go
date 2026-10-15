@@ -1,10 +1,14 @@
 package config
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -126,9 +130,17 @@ func groupProfilesByApplication(profiles []model.ConfigProfile) map[string][]str
 }
 
 func toApplicationResponses(applications map[string][]string) []model.ApplicationWithProfiles {
+	names := make([]string, 0, len(applications))
+	for application := range applications {
+		names = append(names, application)
+	}
+	sort.Strings(names)
+
 	result := make([]model.ApplicationWithProfiles, 0, len(applications))
 
-	for application, profiles := range applications {
+	for _, application := range names {
+		profiles := slices.Clone(applications[application])
+		sort.Strings(profiles)
 		result = append(result, model.ApplicationWithProfiles{
 			Name:     application,
 			Profiles: profiles,
@@ -136,6 +148,10 @@ func toApplicationResponses(applications map[string][]string) []model.Applicatio
 	}
 
 	return result
+}
+
+func replaceSlashPlaceholder(pathPart string) string {
+	return strings.ReplaceAll(pathPart, "(_)", "/")
 }
 
 func optional[T comparable](value T, empty T) *T {
@@ -504,9 +520,16 @@ func resolvePropertyValue(value string, properties map[string]model.ConfigProper
 
 func buildPropertiesText(properties map[string]model.ConfigProperty) string {
 
+	keys := make([]string, 0, len(properties))
+	for key := range properties {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
 	var builder strings.Builder
 
-	for _, property := range properties {
+	for _, key := range keys {
+		property := properties[key]
 		builder.WriteString(property.Key)
 		builder.WriteString(": ")
 		builder.WriteString(property.Value)
@@ -602,6 +625,55 @@ func GetFiberParam(fiberCtx *fiber.Ctx, paramName string) string {
 		return utils.CopyString(paramValue)
 	}
 	return utils.CopyString(unescapedStr)
+}
+
+func propertyValuesAsText(rawProperties map[string]json.RawMessage) (map[string]string, error) {
+	properties := make(map[string]string, len(rawProperties))
+	for key, value := range rawProperties {
+		text, err := propertyValueAsText(value)
+		if err != nil {
+			return nil, fmt.Errorf("property %q: %w", key, err)
+		}
+		properties[key] = text
+	}
+	return properties, nil
+}
+
+func propertyValueAsText(value json.RawMessage) (string, error) {
+	decoder := json.NewDecoder(bytes.NewReader(value))
+	decoder.UseNumber()
+
+	var decoded any
+	if err := decoder.Decode(&decoded); err != nil {
+		return "", err
+	}
+
+	switch typed := decoded.(type) {
+	case string:
+		return typed, nil
+	case json.Number:
+		return typed.String(), nil
+	case bool:
+		return strconv.FormatBool(typed), nil
+	case nil:
+		return "", nil
+	default:
+		return "", errors.New("value must be a string, a number, a boolean or null")
+	}
+}
+
+func validatePropertyKeys(properties map[string]string) error {
+	var dotKeys []string
+	for key := range properties {
+		if strings.HasPrefix(key, ".") {
+			dotKeys = append(dotKeys, key)
+		}
+	}
+	if len(dotKeys) == 0 {
+		return nil
+	}
+	sort.Strings(dotKeys)
+	return &InvalidPropertyKeysError{DotKeys: dotKeys}
 }
 
 func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error) {

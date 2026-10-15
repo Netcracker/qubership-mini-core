@@ -136,7 +136,7 @@ GET /applications HTTP/1.1
 |---|---|---|---|
 | `resolvePlaceholders` | boolean | `true` | `true` replaces placeholders such as `${server.port}` with their values. `false` returns them as stored. |
 
-Each sample below shows the default response (`resolvePlaceholders=true`), followed by the only part that changes with `resolvePlaceholders=false`.
+The parameter applies to the JSON, properties, and YAML formats. Each of their samples shows the default response (`resolvePlaceholders=true`), followed by the only part that changes with `resolvePlaceholders=false`. `GET /{application}/{profile}` and `GET /{application}/{profile}/{label}` ignore it and return values as stored.
 
 ---
 
@@ -147,7 +147,7 @@ Each sample below shows the default response (`resolvePlaceholders=true`), follo
 | | |
 |---|---|
 | Description | Retrieve configuration for an application and profile |
-| Query parameters | `resolvePlaceholders` |
+| Query parameters | None |
 | Output | Flat property sources, no nesting or list conversion |
 
 **Request**
@@ -170,7 +170,7 @@ GET /myapp/dev HTTP/1.1
       "source": {
         "server.host": "localhost",
         "server.port": "8080",
-        "app.url": "http://localhost:8080",
+        "app.url": "http://${server.host}:${server.port}",
         "servers[0]": "alpha",
         "servers[1]": "beta",
         "db": "primary",
@@ -183,18 +183,6 @@ GET /myapp/dev HTTP/1.1
 }
 ```
 
-**With `resolvePlaceholders=false`**
-
-```http
-GET /myapp/dev?resolvePlaceholders=false HTTP/1.1
-```
-
-Only this value changes:
-
-```json
-"app.url": "http://${server.host}:${server.port}"
-```
-
 ---
 
 #### GET /{application}/{profile}/{label}
@@ -202,7 +190,7 @@ Only this value changes:
 | | |
 |---|---|
 | Description | Retrieve configuration for an application, profile, and label |
-| Query parameters | `resolvePlaceholders` |
+| Query parameters | None |
 | Output | Flat property sources, no nesting or list conversion |
 
 **Request**
@@ -225,7 +213,7 @@ GET /myapp/dev/main HTTP/1.1
       "source": {
         "server.host": "localhost",
         "server.port": "8080",
-        "app.url": "http://localhost:8080",
+        "app.url": "http://${server.host}:${server.port}",
         "servers[0]": "alpha",
         "servers[1]": "beta",
         "db": "primary",
@@ -236,18 +224,6 @@ GET /myapp/dev/main HTTP/1.1
     }
   ]
 }
-```
-
-**With `resolvePlaceholders=false`**
-
-```http
-GET /myapp/dev/main?resolvePlaceholders=false HTTP/1.1
-```
-
-Only this value changes:
-
-```json
-"app.url": "http://${server.host}:${server.port}"
 ```
 
 ---
@@ -328,13 +304,13 @@ GET /main/myapp-dev.properties HTTP/1.1
 **Response**
 
 ```properties
-server.host: localhost
-server.port: 8080
 app.url: http://localhost:8080
-servers[0]: alpha
-servers[1]: beta
 db: primary
 db.url: jdbc:postgresql://localhost:5432/myapp
+server.host: localhost
+server.port: 8080
+servers[0]: alpha
+servers[1]: beta
 tags: x
 tags[0]: y
 ```
@@ -385,18 +361,18 @@ GET /main/myapp-dev.yml HTTP/1.1
 **Response**
 
 ```yaml
-server:
-  host: localhost
-  port: '8080'
 app:
-  url: http://localhost:8080
-servers:
-- alpha
-- beta
+    url: http://localhost:8080
 db: primary
 db.url: jdbc:postgresql://localhost:5432/myapp
+server:
+    host: localhost
+    port: '8080'
+servers:
+    - alpha
+    - beta
 tags: x
-tags[0]: y
+tags[0]: 'y'
 ```
 
 **With `resolvePlaceholders=false`**
@@ -409,7 +385,7 @@ Only this value changes:
 
 ```yaml
 app:
-  url: http://${server.host}:${server.port}
+    url: http://${server.host}:${server.port}
 ```
 
 ---

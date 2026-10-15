@@ -1,7 +1,13 @@
 package config
 
+import (
+	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/security"
+	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+)
+
 func (s *ConsulServiceTestSuite) TestInitDefaultProperties() {
-	err := InitializeDefaultProperties(s.consulService, s.ctx)
+	err := InitializeDefaultProperties(s.ctx, s.consulService)
 	s.Require().NoError(err)
 
 	expected := map[string][]string{
@@ -65,4 +71,71 @@ func (s *ConsulServiceTestSuite) TestInitDefaultProperties() {
 			s.Contains(actualKeys, property, "application=%s missing key=%s", appName, property)
 		}
 	}
+}
+
+func (s *ConsulServiceTestSuite) TestInitDefaultPropertiesKeepsValuesChangedAfterFirstRun() {
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+	s.Require().NoError(s.consulService.AddProperties(s.ctx, "tenant-manager", defaultProfileName, map[string]string{
+		"default_credentials.tenant-manager.password": "changed",
+	}))
+
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+
+	profile, err := s.consulService.FindByApplicationAndProfile(s.ctx, "tenant-manager", defaultProfileName)
+	s.Require().NoError(err)
+	s.Equal("changed", propertiesAsMap(profile)["default_credentials.tenant-manager.password"])
+}
+
+func (s *ConsulServiceTestSuite) TestInitDefaultPropertiesKeepsValuesStoredBeforeFirstRun() {
+	stored := map[string]map[string]string{
+		"global": {"mail.server.user": "changed"},
+		"tenant-manager": {
+			"default_credentials.tenant-manager.password": "changed",
+			"default_credentials.tenant-manager.auth-db":  "",
+		},
+		"dmp-tenant-activator": {"tenant.shoppingFrontend.templateName": "changed"},
+	}
+	for application, properties := range stored {
+		s.Require().NoError(s.consulService.AddProperties(s.ctx, application, defaultProfileName, properties))
+	}
+
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+
+	for application, properties := range stored {
+		profile, err := s.consulService.FindByApplicationAndProfile(s.ctx, application, defaultProfileName)
+		s.Require().NoError(err)
+		actual := propertiesAsMap(profile)
+		for key, value := range properties {
+			s.Equal(value, actual[key], "application=%s key=%s", application, key)
+		}
+	}
+	profile, err := s.consulService.FindByApplicationAndProfile(s.ctx, "tenant-manager", defaultProfileName)
+	s.Require().NoError(err)
+	s.Equal("tenant", propertiesAsMap(profile)["default_credentials.tenant-manager.user"])
+}
+
+func (s *ConsulServiceTestSuite) TestInitDefaultPropertiesRestoresMissingDefaults() {
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+	s.Require().NoError(s.consulService.DeleteProperties(s.ctx, "tenant-manager", defaultProfileName, []string{
+		"default_credentials.tenant-manager.user",
+	}))
+
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+
+	profile, err := s.consulService.FindByApplicationAndProfile(s.ctx, "tenant-manager", defaultProfileName)
+	s.Require().NoError(err)
+	s.Equal("tenant", propertiesAsMap(profile)["default_credentials.tenant-manager.user"])
+}
+
+func (s *ConsulServiceTestSuite) TestInitDefaultPropertiesSkipsUnreachableBaseline() {
+	serviceloader.Register(1, &security.DummyToken{})
+	s.T().Setenv("BASELINE_PROJ", "invalid")
+	configloader.Init(configloader.EnvPropertySource())
+	defer configloader.Init()
+
+	s.Require().NoError(InitializeDefaultProperties(s.ctx, s.consulService))
+
+	profile, err := s.consulService.FindByApplicationAndProfile(s.ctx, "dmp-tenant-activator", defaultProfileName)
+	s.Require().NoError(err)
+	s.Equal("qubership-cloud-shopping-frontend", propertiesAsMap(profile)["tenant.shoppingFrontend.templateName"])
 }
