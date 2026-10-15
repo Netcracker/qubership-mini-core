@@ -119,8 +119,8 @@ spec:
               containerPort: 8080
               protocol: TCP
           env:
-            - name: KUBERNETES_M2M_ENABLED
-              value: '{{ .Values.KUBERNETES_M2M_ENABLED }}'
+            - name: M2M_AUTH_MODE
+              value: '{{ .Values.M2M_AUTH_MODE }}'
             - name: MICROSERVICE_NAME
               value: '{{ .Values.SERVICE_NAME }}'
             - name: CLOUD_NAMESPACE

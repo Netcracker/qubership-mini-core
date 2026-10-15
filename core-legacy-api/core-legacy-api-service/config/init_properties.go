@@ -2,16 +2,16 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-	qubersecurity "github.com/netcracker/qubership-core-lib-go/v3/security"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/security/rest"
 )
 
 var logger = logging.GetLogger("Initialization")
@@ -209,10 +209,20 @@ func getBaselineProperties(
 		profile,
 	)
 
-	tokenProvider := serviceloader.MustLoad[qubersecurity.TokenProvider]()
-	token, err := tokenProvider.GetToken(ctx)
+	requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	resp, err := rest.NewM2MRestClient().DoRequest(requestCtx, http.MethodGet, url, nil, nil)
 	if err != nil {
 		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf(
+			"baseline Config Server returned HTTP %d",
+			resp.StatusCode,
+		)
 	}
 
 	var response struct {
@@ -220,24 +230,8 @@ func getBaselineProperties(
 			Source map[string]string `json:"source"`
 		} `json:"propertySources"`
 	}
-
-	client := resty.New().
-		SetTimeout(30 * time.Second)
-
-	resp, err := client.R().
-		SetContext(ctx).
-		SetHeader("Authorization", "Bearer "+token).
-		SetResult(&response).
-		Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	if !resp.IsSuccess() {
-		return nil, fmt.Errorf(
-			"baseline Config Server returned HTTP %d",
-			resp.StatusCode(),
-		)
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode baseline response: %w", err)
 	}
 
 	logger.InfoC(
