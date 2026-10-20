@@ -2,75 +2,65 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
-	qubersecurity "github.com/netcracker/qubership-core-lib-go/v3/security"
-	"github.com/netcracker/qubership-core-lib-go/v3/serviceloader"
+	"github.com/netcracker/qubership-core-lib-go/v3/security/rest"
 )
 
 var logger = logging.GetLogger("Initialization")
 
-const defaultPropertiesMarkerKey = "default_properties_initialized"
-
-func InitializeDefaultProperties(s ConfigService, ctx context.Context) error {
-	// Check whether the default properties have already been initialized.
-	initialized, err := isDefaultPropertiesInitialized(ctx, s)
-	if err != nil {
-		logger.ErrorC(ctx, "Failed to check default properties initialization: %v", err)
-		return err
-	}
-	if initialized {
-		logger.InfoC(ctx, "Default properties are already initialized, skipping initialization")
-		return nil
-	}
-
+func InitializeDefaultProperties(ctx context.Context, s ConfigService) error {
 	// Initialize the global default properties required by the system.
-	if err := InitializeGlobalDefaultProperties(s, ctx); err != nil {
+	if err := InitializeGlobalDefaultProperties(ctx, s); err != nil {
 		return err
 	}
 
 	// Initialize baseline properties when a baseline project is configured.
 	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
 	if strings.TrimSpace(baselineProj) != "" {
-		if err := InitializeBaselineProperties(s, ctx); err != nil {
+		if err := InitializeBaselineProperties(ctx, s); err != nil {
 			return err
 		}
 	}
 
 	// Initialize default properties for Tenant Manager.
-	if err := InitializeTenantManagerDefaultProperties(s, ctx); err != nil {
+	if err := InitializeTenantManagerDefaultProperties(ctx, s); err != nil {
 		return err
 	}
 
 	// Initialize default properties for DMP Tenant Activator.
-	if err := InitializeDmpTenantActivatorDefaultProperties(s, ctx); err != nil {
+	return InitializeDmpTenantActivatorDefaultProperties(ctx, s)
+}
+
+func addMissingProperties(ctx context.Context, s ConfigService, application string, profile string, properties map[string]string) error {
+	stored, err := s.FindByApplicationAndProfile(ctx, application, profile)
+	if err != nil {
 		return err
 	}
+	storedProperties := stored.GetPropertiesAsMap()
 
-	// Mark the default properties as initialized to prevent repeated initialization.
-	return s.AddProperties(ctx, "config-server", "", map[string]string{
-		defaultPropertiesMarkerKey: "true",
-	})
+	missingProperties := make(map[string]string)
+	for key, value := range properties {
+		if _, exists := storedProperties[key]; !exists {
+			missingProperties[key] = value
+		}
+	}
+	if len(missingProperties) == 0 {
+		return nil
+	}
+
+	logger.InfoC(ctx, "Adding %d missing default properties for application=%s profile=%s", len(missingProperties), application, profile)
+	return s.AddProperties(ctx, application, profile, missingProperties)
 }
 
-func isDefaultPropertiesInitialized(ctx context.Context, s ConfigService) (bool, error) {
-	profile, err := s.FindByApplicationAndProfile(ctx, "config-server", defaultProfileName)
-	if err != nil {
-		return false, err
-	}
-	if value, ok := profile.GetPropertiesAsMap()[defaultPropertiesMarkerKey]; ok {
-		return value.Value == "true", nil
-	}
-	return false, nil
-}
-
-func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) error {
+func InitializeGlobalDefaultProperties(ctx context.Context, s ConfigService) error {
 	// 1. Core Cloud Infrastructure Settings
 	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
 	cloudPublicHost := configloader.GetOrDefaultString("cloud.public.host", "")
@@ -155,10 +145,10 @@ func InitializeGlobalDefaultProperties(s ConfigService, ctx context.Context) err
 		properties["headers.allowed"] = allowedHeaders
 	}
 
-	return s.AddProperties(ctx, configPropertiesGlobalApplicationName, defaultProfileName, properties)
+	return addMissingProperties(ctx, s, configPropertiesGlobalApplicationName, defaultProfileName, properties)
 }
 
-func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
+func InitializeBaselineProperties(ctx context.Context, s ConfigService) error {
 	baselineProj := configloader.GetOrDefaultString("baseline.proj", "")
 
 	if strings.TrimSpace(baselineProj) == "" {
@@ -178,7 +168,8 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 		"default",
 	)
 	if err != nil {
-		return fmt.Errorf("failed to fetch baseline properties: %w", err)
+		logger.WarnC(ctx, "Skipping baseline properties: failed to fetch them from baseline project %q: %v", baselineProj, err)
+		return nil
 	}
 
 	// Select only properties configured in BASELINE_FETCH_PROPERTIES.
@@ -195,9 +186,10 @@ func InitializeBaselineProperties(s ConfigService, ctx context.Context) error {
 		return nil
 	}
 
-	// Update/insert them into our global/default profile.
-	return s.AddProperties(
+	// Add the ones missing from our global/default profile.
+	return addMissingProperties(
 		ctx,
+		s,
 		configPropertiesGlobalApplicationName,
 		defaultProfileName,
 		propertiesToMigrate,
@@ -217,10 +209,20 @@ func getBaselineProperties(
 		profile,
 	)
 
-	tokenProvider := serviceloader.MustLoad[qubersecurity.TokenProvider]()
-	token, err := tokenProvider.GetToken(ctx)
+	requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	resp, err := rest.NewM2MRestClient().DoRequest(requestCtx, http.MethodGet, url, nil, nil)
 	if err != nil {
 		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf(
+			"baseline Config Server returned HTTP %d",
+			resp.StatusCode,
+		)
 	}
 
 	var response struct {
@@ -228,24 +230,8 @@ func getBaselineProperties(
 			Source map[string]string `json:"source"`
 		} `json:"propertySources"`
 	}
-
-	client := resty.New().
-		SetTimeout(30 * time.Second)
-
-	resp, err := client.R().
-		SetContext(ctx).
-		SetHeader("Authorization", "Bearer "+token).
-		SetResult(&response).
-		Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	if !resp.IsSuccess() {
-		return nil, fmt.Errorf(
-			"baseline Config Server returned HTTP %d",
-			resp.StatusCode(),
-		)
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode baseline response: %w", err)
 	}
 
 	logger.InfoC(
@@ -261,7 +247,7 @@ func getBaselineProperties(
 	return response.PropertySources[0].Source, nil
 }
 
-func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Context) error {
+func InitializeTenantManagerDefaultProperties(ctx context.Context, s ConfigService) error {
 	InstallationNameRules := "[{\"namespace\":null,\"microserviceName\":null,\"tenantId\":null,\"dbClassifier\":null, \"installationName\" : \"default\"}]"
 	cloudPort := configloader.GetOrDefaultString("cloud.api.port", "6443")
 	cloudProtocol := configloader.GetOrDefaultString("cloud.protocol", "https")
@@ -281,8 +267,9 @@ func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Conte
 		"default_credentials.tenant-manager.auth-db":  "tenants",
 		"default_credentials.dbaas.auth-db":           "",
 	}
-	return s.AddProperties(
+	return addMissingProperties(
 		ctx,
+		s,
 		"tenant-manager",
 		defaultProfileName,
 		properties,
@@ -290,12 +277,13 @@ func InitializeTenantManagerDefaultProperties(s ConfigService, ctx context.Conte
 
 }
 
-func InitializeDmpTenantActivatorDefaultProperties(s ConfigService, ctx context.Context) error {
+func InitializeDmpTenantActivatorDefaultProperties(ctx context.Context, s ConfigService) error {
 	properties := map[string]string{
 		"tenant.shoppingFrontend.templateName": "qubership-cloud-shopping-frontend",
 	}
-	return s.AddProperties(
+	return addMissingProperties(
 		ctx,
+		s,
 		"dmp-tenant-activator",
 		defaultProfileName,
 		properties,

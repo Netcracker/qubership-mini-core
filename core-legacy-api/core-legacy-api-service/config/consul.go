@@ -48,12 +48,12 @@ func NewConsulClientFromConfig() (*api.Client, error) {
 	return consulClient, nil
 }
 
-func NewConsulService(client *api.Client, namespace string) *consulService {
+func NewConsulService(client *api.Client, namespace string) *ConsulService {
 
-	return &consulService{client, namespace, logging.GetLogger("ConsulService")}
+	return &ConsulService{client, namespace, logging.GetLogger("ConsulService")}
 }
 
-func NewConsulServiceFromConfig() *consulService {
+func NewConsulServiceFromConfig() *ConsulService {
 	client, err := NewConsulClientFromConfig()
 	if err != nil {
 		logger.Errorf("Couldn't create Consul client: %v", err)
@@ -64,15 +64,15 @@ func NewConsulServiceFromConfig() *consulService {
 	return NewConsulService(client, namespace)
 }
 
-func InitConsulConfiguration(ctx context.Context) (*consulService, error) {
+func InitConsulConfiguration(ctx context.Context) (*ConsulService, error) {
 	service := NewConsulServiceFromConfig()
-	if err := InitializeDefaultProperties(service, ctx); err != nil {
+	if err := InitializeDefaultProperties(ctx, service); err != nil {
 		return nil, err
 	}
 	return service, nil
 }
 
-func (s *consulService) HealthCheck() health.Status {
+func (s *ConsulService) HealthCheck() health.Status {
 	_, err := s.consul.Status().Leader()
 	if err != nil {
 		return health.Status{Name: health.StatusProblem, Details: map[string]interface{}{
@@ -82,7 +82,7 @@ func (s *consulService) HealthCheck() health.Status {
 	return health.Status{Name: health.StatusUp}
 }
 
-func (s *consulService) AddProperties(ctx context.Context, application string, profile string, properties map[string]string) error {
+func (s *ConsulService) AddProperties(ctx context.Context, application string, profile string, properties map[string]string) error {
 	batcher := newTxnBatcher(ctx, s.performTransaction)
 
 	for key, value := range properties {
@@ -100,7 +100,7 @@ func (s *consulService) AddProperties(ctx context.Context, application string, p
 	return nil
 }
 
-func (s *consulService) performTransaction(ctx context.Context, operation api.TxnOps) error {
+func (s *ConsulService) performTransaction(ctx context.Context, operation api.TxnOps) error {
 	s.logger.InfoC(ctx, "Executing Consul transaction with %d operations", len(operation))
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	ok, resp, _, err := s.consul.Txn().Txn(operation, queryOptions) //TODO: transaction?
@@ -126,7 +126,7 @@ func (s *consulService) performTransaction(ctx context.Context, operation api.Tx
 	return nil
 }
 
-func (s *consulService) FindAll(ctx context.Context) ([]model.ConfigProfile, error) {
+func (s *ConsulService) FindAll(ctx context.Context) ([]model.ConfigProfile, error) {
 	prefix := consulConfigPrefix + "/" + s.namespace + "/"
 	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
 	// Get all KV pairs under the prefix.
@@ -139,13 +139,13 @@ func (s *consulService) FindAll(ctx context.Context) ([]model.ConfigProfile, err
 
 	profiles := buildConfigProfiles(propertiesByApp, prefix)
 
-	s.logger.Infof("Found %d config profiles", len(profiles))
+	s.logger.DebugC(ctx, "Found %d config profiles", len(profiles))
 
 	return profiles, nil
 
 }
 
-func (s *consulService) FindByApplicationAndProfile(
+func (s *ConsulService) FindByApplicationAndProfile(
 	ctx context.Context,
 	appName string,
 	profileName string,
@@ -165,7 +165,7 @@ func (s *consulService) FindByApplicationAndProfile(
 	}, nil
 }
 
-func (s *consulService) DeleteProfile(ctx context.Context, application string, profile string) error {
+func (s *ConsulService) DeleteProfile(ctx context.Context, application string, profile string) error {
 	prefix := formatKeyPrefix(s.namespace, application, profile)
 	writeOptions := (&api.WriteOptions{}).WithContext(ctx)
 	_, err := s.consul.KV().DeleteTree(prefix, writeOptions)
@@ -175,7 +175,7 @@ func (s *consulService) DeleteProfile(ctx context.Context, application string, p
 	return nil
 }
 
-func (s *consulService) DeleteProperties(ctx context.Context, application string, profile string, propertiesToDelete []string) error {
+func (s *ConsulService) DeleteProperties(ctx context.Context, application string, profile string, propertiesToDelete []string) error {
 	batcher := newTxnBatcher(ctx, s.performTransaction)
 
 	for _, key := range propertiesToDelete {
@@ -193,7 +193,7 @@ func (s *consulService) DeleteProperties(ctx context.Context, application string
 	return nil
 }
 
-type consulService struct {
+type ConsulService struct {
 	consul    *api.Client
 	namespace string
 	logger    logging.Logger

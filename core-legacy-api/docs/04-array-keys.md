@@ -11,7 +11,7 @@
 ### How it works in the core-legacy-api
 
 - Array keys are converted into lists, same as in Config Server.
-- A limit of **100 000** is applied to the index.
+- A limit of **10 000** is applied to the index.
 - If the index is above the limit, the key is **not** converted into a list. It is returned as-is, as a flat literal key.
 
 Example:
@@ -19,7 +19,7 @@ Example:
 ```properties
 list[0]=a
 list[1]=b
-list[100001]=c
+list[10001]=c
 ```
 
 Output (JSON):
@@ -27,7 +27,7 @@ Output (JSON):
 ```json
 {
   "list": ["a", "b"],
-  "list[100001]": "c"
+  "list[10001]": "c"
 }
 ```
 
