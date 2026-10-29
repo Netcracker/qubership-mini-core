@@ -96,7 +96,7 @@ properties of an application named after the first segment. See [Removed API](01
 | `GET /metrics` | Spring Boot Actuator metrics | 404 |
 | `GET /metrics/{name}` | One Actuator metric | 200 with properties |
 | `GET /health/{component}` | One Actuator health component | 200 with properties |
-| `GET /v3/api-docs` | OpenAPI 3 specification from springdoc | 200 with properties |
+| `GET /v3/api-docs` | OpenAPI 3 specification from springdoc | Swagger 2.0 specification |
 
 New endpoints:
 

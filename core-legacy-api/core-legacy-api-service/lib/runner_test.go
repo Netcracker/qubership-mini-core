@@ -40,6 +40,26 @@ func getProbe(t *testing.T, app *fiber.App, path string) (int, map[string]interf
 	return resp.StatusCode, payload
 }
 
+func TestOpenAPISpecEndpointsAreNotCaughtByPropertyRoutes(t *testing.T) {
+	app := fiber.New()
+	registerOpenAPISpecEndpoints(app)
+	app.Get("/:label/:nameAndProfiles.json", func(c *fiber.Ctx) error {
+		return c.Status(http.StatusNotFound).JSON(map[string]string{"error": "caught"})
+	})
+	app.Get("/:application/:profile", func(c *fiber.Ctx) error {
+		return c.Status(http.StatusNotFound).JSON(map[string]string{"error": "caught"})
+	})
+
+	for _, path := range []string{"/v3/api-docs", "/swagger-ui/doc.json", "/doc", "/swagger-ui/swagger.json"} {
+		resp, err := app.Test(httptest.NewRequest(http.MethodGet, path, nil))
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode, path)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), `"swagger"`, path)
+	}
+}
+
 func TestProbeEndpoints(t *testing.T) {
 	cases := []struct {
 		name       string

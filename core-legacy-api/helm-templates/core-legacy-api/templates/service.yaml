@@ -6,6 +6,8 @@ metadata:
   labels:
     name: 'config-server'
     app.kubernetes.io/name: 'config-server'
+    app.kubernetes.io/version: '{{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}'
+    app.kubernetes.io/component: 'backend'
     app.kubernetes.io/part-of: 'Cloud-Core'
     app.kubernetes.io/managed-by: 'saasDeployer'
     deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'

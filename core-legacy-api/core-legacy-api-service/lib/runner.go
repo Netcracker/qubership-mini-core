@@ -87,11 +87,7 @@ func RunService() {
 	registerProbeEndpoints(app, healthService, readinessService)
 
 	configController := config.NewConfigPropertiesController(consulService)
-	// swagger
-	app.Get("/swagger-ui/swagger.json", func(ctx *fiber.Ctx) error {
-		ctx.Set("Content-Type", "application/json")
-		return ctx.Status(http.StatusOK).SendString(docs.SwaggerInfo.ReadDoc())
-	})
+	registerOpenAPISpecEndpoints(app)
 	app.Get("/applications", configController.GetApplicationsAndProfiles)
 	app.Get("/:label/:nameAndProfiles.json", configController.FindOneJSON)
 	app.Get("/:label/:nameAndProfiles.properties", configController.FindOneProperties)
@@ -137,6 +133,26 @@ func registerShutdownHooks() {
 			hook()
 		}
 	}()
+}
+
+func registerOpenAPISpecEndpoints(app *fiber.App) {
+	spec := func(c *fiber.Ctx) error {
+		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		return c.Status(http.StatusOK).SendString(docs.SwaggerInfo.ReadDoc())
+	}
+	for _, path := range []string{
+		"/v3/api-docs",
+		"/v3/api-docs.yaml",
+		"/v2/api-docs",
+		"/v1/api-docs",
+		"/api-docs",
+		"/q/openapi",
+		"/swagger-ui/swagger.json",
+		"/swagger-ui/doc.json",
+		"/doc",
+	} {
+		app.Get(path, spec)
+	}
 }
 
 func registerProbeEndpoints(app *fiber.App, healthService, readinessService health.HealthService) {
