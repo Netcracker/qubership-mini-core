@@ -65,6 +65,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/model.Environment'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
@@ -182,6 +188,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/model.Environment'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:

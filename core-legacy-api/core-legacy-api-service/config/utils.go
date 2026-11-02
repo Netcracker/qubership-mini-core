@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
@@ -687,6 +688,41 @@ func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error
 	profiles := nameWithProfiles[idx+1:]
 
 	return application, profiles, nil
+}
+
+// allowedProfileSymbols holds the characters other than letters and digits
+// that may appear inside a profile name.
+const allowedProfileSymbols = "-_.+@"
+
+// parseProfiles splits a comma-separated profile list and returns an error
+// wrapping [ErrBadRequest] when any profile in it is invalid. As in
+// config-server, a valid profile is non-empty, starts and ends with a letter or
+// digit, contains only letters, digits, and [allowedProfileSymbols], and has no "..".
+// Spaces around a comma are not trimmed, so "default, test" is rejected.
+func parseProfiles(profiles string) ([]string, error) {
+	list := strings.Split(profiles, ",")
+	for _, profile := range list {
+		if !isValidProfile(profile) {
+			return nil, fmt.Errorf("invalid profile %q: %w", profile, ErrBadRequest)
+		}
+	}
+	return list, nil
+}
+
+func isValidProfile(profile string) bool {
+	runes := []rune(profile)
+	if len(runes) == 0 || strings.Contains(profile, "..") {
+		return false
+	}
+	for i, r := range runes {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			continue
+		}
+		if i == 0 || i == len(runes)-1 || !strings.ContainsRune(allowedProfileSymbols, r) {
+			return false
+		}
+	}
+	return true
 }
 
 func LogError(log logging.Logger, ctx context.Context, format string, args ...any) error {
