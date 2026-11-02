@@ -875,36 +875,6 @@ func TestFindOne_WithMultipleProfiles(t *testing.T) {
 	assert.Equal(t, []string{"dev"}, env.Profiles)
 }
 
-// config-server returns the profile list from the path as one element of
-// profiles, and FindOne does the same while still looking up each profile.
-func TestFindOne_ReturnsRequestedProfilesAsOneElement(t *testing.T) {
-	controller, mockService, ctrl := newTestController(t)
-	defer ctrl.Finish()
-
-	mockService.EXPECT().
-		FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
-		Return(model.ConfigProfile{}, nil)
-	mockService.EXPECT().
-		FindByApplicationAndProfile(gomock.Any(), "test-app", "dev").
-		Return(model.ConfigProfile{}, nil)
-	mockService.EXPECT().
-		FindByApplicationAndProfile(gomock.Any(), "test-app", "prod").
-		Return(model.ConfigProfile{}, nil)
-
-	app := fiber.New(fiber.Config{
-		ErrorHandler: FiberErrorHandler,
-	})
-	app.Get("/:application/:profile", controller.FindOne)
-
-	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/test-app/dev,prod", nil))
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	var env model.Environment
-	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
-	assert.Equal(t, []string{"dev,prod"}, env.Profiles)
-}
-
 func TestFindOne_LaterProfileOverridesEarlierOne(t *testing.T) {
 	controller, mockService, ctrl := newTestController(t)
 	defer ctrl.Finish()
@@ -945,7 +915,7 @@ func TestFindOne_AcceptsValidProfiles(t *testing.T) {
 		{name: "one-character profile", path: "a", lookups: []string{"a"}, profiles: "a"},
 		{name: "digits at the start, inside, and at the end", path: "v2,1dev9", lookups: []string{"v2", "1dev9"}, profiles: "v2,1dev9"},
 		{name: "allowed symbols inside a profile", path: "a-b_c.d+e@f", lookups: []string{"a-b_c.d+e@f"}, profiles: "a-b_c.d+e@f"},
-		{name: "non-ASCII letter", path: "caf%C3%A9", lookups: []string{"café"}, profiles: "café"},
+		{name: "non-ASCII letter", path: "caf%C3%A9", lookups: []string{"caf\u00e9"}, profiles: "caf\u00e9"},
 		{name: "three profiles", path: "default,test,prod", lookups: []string{"default", "test", "prod"}, profiles: "default,test,prod"},
 	}
 	for _, tt := range tests {
@@ -977,10 +947,8 @@ func TestFindOne_AcceptsValidProfiles(t *testing.T) {
 	}
 }
 
-// FindOne rejects a profile list the way config-server 5.0.3 and later does:
-// every profile is non-empty, starts and ends with a letter or digit, contains
-// only letters, digits, and -_.+@, and has no "..". A list such as
-// "default, test" used to return 200 without the properties of " test".
+// config-server 5.0.3 and later rejects these lists with 400 too. A list such
+// as "default, test" used to return 200 without the properties of " test".
 func TestFindOne_RejectsInvalidProfiles(t *testing.T) {
 	tests := []struct {
 		name string

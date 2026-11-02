@@ -690,15 +690,12 @@ func splitApplicationAndProfiles(nameWithProfiles string) (string, string, error
 	return application, profiles, nil
 }
 
-// allowedProfileSymbols holds the characters other than letters and digits
-// that may appear inside a profile name.
-const allowedProfileSymbols = "-_.+@"
+const innerProfileSymbols = "-_.+@"
 
 // parseProfiles splits a comma-separated profile list and returns an error
 // wrapping [ErrBadRequest] when any profile in it is invalid. As in
 // config-server, a valid profile is non-empty, starts and ends with a letter or
-// digit, contains only letters, digits, and [allowedProfileSymbols], and has no "..".
-// Spaces around a comma are not trimmed, so "default, test" is rejected.
+// digit, contains only letters, digits, and -_.+@, and has no "..".
 func parseProfiles(profiles string) ([]string, error) {
 	list := strings.Split(profiles, ",")
 	for _, profile := range list {
@@ -718,7 +715,7 @@ func isValidProfile(profile string) bool {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			continue
 		}
-		if i == 0 || i == len(runes)-1 || !strings.ContainsRune(allowedProfileSymbols, r) {
+		if i == 0 || i == len(runes)-1 || !strings.ContainsRune(innerProfileSymbols, r) {
 			return false
 		}
 	}
