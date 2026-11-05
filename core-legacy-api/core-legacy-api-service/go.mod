@@ -3,7 +3,7 @@ module github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api
 go 1.26.7
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.14
+	github.com/gofiber/fiber/v2 v2.52.16
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/api v1.34.5
 	github.com/netcracker/qubership-core-lib-go-actuator-common/v2 v2.10.5
@@ -11,7 +11,7 @@ require (
 	github.com/netcracker/qubership-core-lib-go-rest-utils/v2 v2.9.1
 	github.com/netcracker/qubership-core-lib-go/v3 v3.15.0
 	github.com/stretchr/testify v1.12.1
-	github.com/swaggo/swag v1.16.4
+	github.com/swaggo/swag v1.16.6
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/valyala/fasthttp v1.72.0
 	go.uber.org/mock v0.6.0
@@ -122,6 +122,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
+	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
