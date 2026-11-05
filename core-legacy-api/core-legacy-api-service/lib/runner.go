@@ -41,11 +41,13 @@ func RunService() {
 
 	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {})
 
-	consulService, err := config.InitConsulConfiguration(ctx)
+	consulToken, err := config.NewConsulTokenFromConfig(ctx)
 	if err != nil {
-		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
+		logger.Errorf("Couldn't configure the Consul token: %s", err.Error())
 		panic(err)
 	}
+	consulService := config.NewConsulServiceFromConfig(consulToken.SecretID)
+	consulInitialization := config.StartConsulInitialization(ctx, consulToken, consulService)
 
 	healthService, err := health.NewHealthService()
 	if err != nil {
@@ -84,6 +86,7 @@ func RunService() {
 	})
 
 	readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)
+	readinessService.AddCheck("ConsulInitialization", consulInitialization.HealthCheck)
 	registerProbeEndpoints(app, healthService, readinessService)
 
 	configController := config.NewConfigPropertiesController(consulService)

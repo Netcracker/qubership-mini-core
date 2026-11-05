@@ -35,7 +35,8 @@ releases in one namespace. The `config-server` Service selects only `core-legacy
 | --- | --- | --- |
 | Service | `config-server` | `config-server` |
 | Email secret | `config-server-email-secret` | `config-server-email-secret` |
-| Consul token secret | `config-server-consul-token`, required | `config-server-consul-token`, optional |
+| Consul token secret | `config-server-consul-token`, required | `config-server-consul-token`, optional; not mounted with `CONSUL_AUTH_MODE` `k8s` |
+| `ConsulACL` resource | None | Named after `SERVICE_NAME`, with `CONSUL_AUTH_MODE` `hybrid` or `k8s`; see [Consul access](#consul-access) |
 | Deployment, pods, container, ServiceAccount, HPA | `config-server` | `core-legacy-api` |
 | PodMonitor | `config-server-pod-monitor` | `core-legacy-api-pod-monitor` |
 | PodMonitor label `app.kubernetes.io/part-of` | `Cloud-Core` | `platform-monitoring` |
@@ -48,10 +49,35 @@ The logical database that config-server used in DBaaS is not used by `core-legac
 
 ## Consul access
 
-Properties are read and written with the static token from the `config-server-consul-token` secret, as in
-config-server. `CONSUL_AUTH_MODE` and the other `CONSUL_AUTH_*` parameters apply only to reading log levels. With the
-Kubernetes auth method, the service logs in with the `core-legacy-api` ServiceAccount, so a binding rule that matches
-the `config-server` ServiceAccount name does not apply to it.
+`CONSUL_AUTH_MODE` selects how the service gets the Consul ACL token it reads and writes properties with. When it is
+empty, `M2M_AUTH_MODE` selects it, and an empty `M2M_AUTH_MODE` means `legacy`. The same value selects how the service
+reads its log levels, so one parameter switches both.
+
+| Mode | Token for properties | `ConsulACL` resource |
+| --- | --- | --- |
+| `legacy` | The static token from the `config-server-consul-token` secret, as in config-server | Not created |
+| `hybrid` | The token from the secret when core-bootstrap issued one, otherwise a login | Created when the cluster serves the `ConsulACL` CRD of `netcracker.com/v1alpha1` |
+| `k8s` | A login; the secret is not mounted | Created; the chart fails to render when the cluster does not serve the CRD |
+
+A login presents the projected ServiceAccount token with the audience `CONSUL_AUTH_AUDIENCE` (default `netcracker`) to
+the Consul auth method `CONSUL_AUTH_METHOD` (default `applications-k8s-m2m`). When the issued token has an expiration
+time, the service logs in again before it expires. In `hybrid` the service chooses between the secret and a login once,
+at startup, and core-bootstrap decides whether the secret exists: it issues no token where Consul has the auth method
+with the audience among its bound audiences. A static token that stops working is not replaced by a login until the
+pod restarts.
+
+The `ConsulACL` resource is named after `SERVICE_NAME`. The Consul ACL configurator turns it into a policy that writes
+`config/<namespace>/`, a policy that reads `logging/<namespace>/<SERVICE_NAME>`, a role with both, and a binding rule
+that gives the role to the `SERVICE_NAME` ServiceAccount. The resource sets `spec.acl.operatorNamespace` to the second
+label of the host in `CONSUL_URL`, so `http://consul-server.consul-service:8500` selects the operator in
+`consul-service`. A host without a dot leaves the field out. Until the operator has created the binding rule, the login
+fails and the service retries it; see [Health](#health).
+
+Where Consul has ACLs disabled, it answers the login with `ACL support disabled`, and the service works without a
+token.
+
+The binding rule matches the `core-legacy-api` ServiceAccount, so a binding rule that matches the `config-server`
+ServiceAccount name does not apply to the service.
 
 The service reads its log levels only from `logging/<namespace>/core-legacy-api`. Overrides stored under
 `logging/<namespace>/config-server` and `logging/<namespace>/application` no longer apply to it. It does not read its
@@ -170,13 +196,15 @@ sum by (path) (rate(http_request_status{container="core-legacy-api"}[5m]))
 | --- | --- | --- |
 | `/health` | Spring Boot Actuator, with components such as `consul` and `diskSpace`: `{"status":...,"components":{...}}` | Always `{"status":"UP"}`, no checks |
 | `/health/liveness` | Actuator group with only `livenessState` | The same response as `/health` |
-| `/health/readiness` | Actuator group with only `readinessState`: 200 after startup, whatever the state of Consul | The same response as `/readiness`: 503 while Consul is unreachable |
-| `/readiness` | None | `{"status":...,"ConsulCheck":{"status":...}}`; `PROBLEM` returns 503, `WARNING` returns 200 |
+| `/health/readiness` | Actuator group with only `readinessState`: 200 after startup, whatever the state of Consul | The same response as `/readiness`: 503 while Consul is unreachable or the startup initialization has not completed |
+| `/readiness` | None | `{"status":...,"ConsulCheck":{"status":...},"ConsulInitialization":{"status":...}}`; `PROBLEM` returns 503, `WARNING` returns 200 |
 
 The chart points the readiness probe at `/readiness` and the liveness and startup probes at `/health`. When Consul
-becomes unreachable after startup, pods leave the Service and are not restarted. When Consul is unreachable at
-startup, the service exits and the pod restarts until Consul is reachable. A check that used config-server `/health`
-to see whether Consul is reachable has to call `/readiness` or `/health/readiness`.
+becomes unreachable after startup, pods leave the Service and are not restarted. At startup the service logs in to
+Consul and writes the default properties. Until both succeed, `ConsulInitialization` reports `PROBLEM` with the last
+error, and the service retries after a delay that doubles from 1 second up to 1 minute; the pod is not restarted. A
+check that used config-server `/health` to see whether Consul is reachable has to call `/readiness` or
+`/health/readiness`.
 
 ## Tracing
 

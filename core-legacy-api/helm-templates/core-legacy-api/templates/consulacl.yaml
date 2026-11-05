@@ -1,0 +1,42 @@
+{{- $consulAuth := include "core-legacy-api.consulAuth" . | fromYaml }}
+{{- if $consulAuth.consulAcl }}
+{{- $consulURL := required "CONSUL_URL is required to create the ConsulACL resource" .Values.CONSUL_URL }}
+{{- $consulHost := first (splitList ":" (last (splitList "://" $consulURL))) }}
+{{- $consulHostParts := splitList "." $consulHost }}
+{{- $acl := dict
+  "policies" (list
+    (dict
+      "Name" "config-write"
+      "Description" "Write access to the configuration of the namespace"
+      "Rules" (printf "key_prefix \"config/%s/\" { policy = \"write\" }" .Values.NAMESPACE))
+    (dict
+      "Name" "logging-read"
+      "Description" "Read access to the log levels of the service"
+      "Rules" (printf "key_prefix \"logging/%s/%s\" { policy = \"read\" }" .Values.NAMESPACE .Values.SERVICE_NAME)))
+  "roles" (list
+    (dict
+      "Name" "service"
+      "Description" "Access of the service to Consul"
+      "policy_names" (list "config-write" "logging-read")))
+  "bind_rules" (list
+    (dict
+      "BindName" "service"
+      "ServiceAccountName" .Values.SERVICE_NAME)) }}
+---
+apiVersion: netcracker.com/v1alpha1
+kind: ConsulACL
+metadata:
+  name: '{{ .Values.SERVICE_NAME }}'
+  namespace: '{{ .Values.NAMESPACE }}'
+  labels:
+    app.kubernetes.io/part-of: 'Cloud-Core'
+    app.kubernetes.io/managed-by: 'saasDeployer'
+    deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
+spec:
+  acl:
+    name: '{{ .Values.SERVICE_NAME }}'
+{{- if gt (len $consulHostParts) 1 }}
+    operatorNamespace: {{ index $consulHostParts 1 | quote }}
+{{- end }}
+    json: {{ toJson $acl | quote }}
+{{- end }}
