@@ -21,6 +21,8 @@ import (
 
 const namespace = "test-ns"
 
+const consulImage = "hashicorp/consul:2.0.4"
+
 func anonymous() string { return "" }
 
 // ConsulServiceTestSuite mirrors the Java ConsulServiceTest: it spins up a
@@ -43,7 +45,7 @@ func (s *ConsulServiceTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	req := testcontainers.ContainerRequest{
-		Image:        "hashicorp/consul:1.8.9",
+		Image:        consulImage,
 		ExposedPorts: []string{"8500/tcp"},
 		Cmd:          []string{"agent", "-dev", "-client", "0.0.0.0", "--enable-script-checks=true"},
 		WaitingFor:   wait.ForListeningPort("8500/tcp"),

@@ -232,7 +232,7 @@ func startConsulWithACLsDisabled(t *testing.T, image string) string {
 }
 
 func TestLoginConsulToken_RealConsulWithACLsDisabledWorksWithoutAToken(t *testing.T) {
-	address := startConsulWithACLsDisabled(t, "hashicorp/consul:2.0.4")
+	address := startConsulWithACLsDisabled(t, consulImage)
 	token := newLoginConsulToken(context.Background(), address)
 
 	require.NoError(t, token.Login())
