@@ -3,9 +3,9 @@ module github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api
 go 1.26.7
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.14
+	github.com/gofiber/fiber/v3 v3.6.1
 	github.com/google/uuid v1.6.0
-	github.com/hashicorp/consul/api v1.34.5
+	github.com/hashicorp/consul/api/v2 v2.0.0
 	github.com/netcracker/qubership-core-lib-go-actuator-common/v2 v2.10.5
 	github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2 v2.9.5
 	github.com/netcracker/qubership-core-lib-go-rest-utils/v2 v2.9.1
