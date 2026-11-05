@@ -798,6 +798,19 @@ func TestFindOneFileFormats_RejectInvalidRequests(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		})
+
+		t.Run(ext+" profile with a space is a bad request", func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(model.ConfigProfile{}, nil).
+				AnyTimes()
+
+			resp, err := newFileFormatsApp(controller).Test(httptest.NewRequest(http.MethodGet, "/test-app-default,%20test."+ext, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		})
 	}
 }
 
@@ -862,7 +875,7 @@ func TestFindOne_WithMultipleProfiles(t *testing.T) {
 	assert.Equal(t, []string{"dev"}, env.Profiles)
 }
 
-func TestFindOne_ReturnsEachRequestedProfile(t *testing.T) {
+func TestFindOne_LaterProfileOverridesEarlierOne(t *testing.T) {
 	controller, mockService, ctrl := newTestController(t)
 	defer ctrl.Finish()
 
@@ -871,10 +884,10 @@ func TestFindOne_ReturnsEachRequestedProfile(t *testing.T) {
 		Return(model.ConfigProfile{}, nil)
 	mockService.EXPECT().
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "dev").
-		Return(model.ConfigProfile{}, nil)
+		Return(model.ConfigProfile{Properties: []model.ConfigProperty{{Key: "db.url", Value: "dev-db"}}}, nil)
 	mockService.EXPECT().
 		FindByApplicationAndProfile(gomock.Any(), "test-app", "prod").
-		Return(model.ConfigProfile{}, nil)
+		Return(model.ConfigProfile{Properties: []model.ConfigProperty{{Key: "db.url", Value: "prod-db"}}}, nil)
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: FiberErrorHandler,
@@ -887,7 +900,88 @@ func TestFindOne_ReturnsEachRequestedProfile(t *testing.T) {
 
 	var env model.Environment
 	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
-	assert.Equal(t, []string{"dev", "prod"}, env.Profiles)
+	if assert.Len(t, env.PropertySources, 1) {
+		assert.Equal(t, "prod-db", env.PropertySources[0].Source["db.url"])
+	}
+}
+
+func TestFindOne_AcceptsValidProfiles(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		lookups  []string
+		profiles string
+	}{
+		{name: "one-character profile", path: "a", lookups: []string{"a"}, profiles: "a"},
+		{name: "digits at the start, inside, and at the end", path: "v2,1dev9", lookups: []string{"v2", "1dev9"}, profiles: "v2,1dev9"},
+		{name: "allowed symbols inside a profile", path: "a-b_c.d+e@f", lookups: []string{"a-b_c.d+e@f"}, profiles: "a-b_c.d+e@f"},
+		{name: "non-ASCII letter", path: "caf%C3%A9", lookups: []string{"caf\u00e9"}, profiles: "caf\u00e9"},
+		{name: "three profiles", path: "default,test,prod", lookups: []string{"default", "test", "prod"}, profiles: "default,test,prod"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), consulGlobalApplicationName, defaultProfileName).
+				Return(model.ConfigProfile{}, nil)
+			for _, profile := range tt.lookups {
+				mockService.EXPECT().
+					FindByApplicationAndProfile(gomock.Any(), "test-app", profile).
+					Return(model.ConfigProfile{}, nil)
+			}
+
+			app := fiber.New(fiber.Config{
+				ErrorHandler: FiberErrorHandler,
+			})
+			app.Get("/:application/:profile", controller.FindOne)
+
+			resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/test-app/"+tt.path, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, resp.StatusCode, "GET /test-app/%s", tt.path)
+
+			var env model.Environment
+			assert.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+			assert.Equal(t, []string{tt.profiles}, env.Profiles)
+		})
+	}
+}
+
+// config-server 5.0.3 and later rejects these lists with 400 too. A list such
+// as "default, test" used to return 200 without the properties of " test".
+func TestFindOne_RejectsInvalidProfiles(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "space after a comma", path: "default,%20test"},
+		{name: "empty profile between commas", path: "default,,test"},
+		{name: "trailing comma", path: "default,"},
+		{name: "profile starting with a symbol", path: "-dev"},
+		{name: "profile ending with a symbol", path: "dev."},
+		{name: "one-symbol profile", path: "_"},
+		{name: "character outside the allowed set", path: "dev~test"},
+		{name: "two dots in a row", path: "dev..test"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller, mockService, ctrl := newTestController(t)
+			defer ctrl.Finish()
+			mockService.EXPECT().
+				FindByApplicationAndProfile(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(model.ConfigProfile{}, nil).
+				AnyTimes()
+
+			app := fiber.New(fiber.Config{
+				ErrorHandler: FiberErrorHandler,
+			})
+			app.Get("/:application/:profile", controller.FindOne)
+
+			resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/test-app/"+tt.path, nil))
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "GET /test-app/%s", tt.path)
+		})
+	}
 }
 
 func TestFindOne_WithoutLabel(t *testing.T) {
