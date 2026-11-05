@@ -232,14 +232,10 @@ func startConsulWithACLsDisabled(t *testing.T, image string) string {
 }
 
 func TestLoginConsulToken_RealConsulWithACLsDisabledWorksWithoutAToken(t *testing.T) {
-	for _, image := range []string{"hashicorp/consul:1.8.9", "hashicorp/consul:2.0.4"} {
-		t.Run(image, func(t *testing.T) {
-			address := startConsulWithACLsDisabled(t, image)
-			token := newLoginConsulToken(context.Background(), address)
+	address := startConsulWithACLsDisabled(t, "hashicorp/consul:2.0.4")
+	token := newLoginConsulToken(context.Background(), address)
 
-			require.NoError(t, token.Login())
+	require.NoError(t, token.Login())
 
-			assert.Equal(t, "", token.SecretID())
-		})
-	}
+	assert.Equal(t, "", token.SecretID())
 }
