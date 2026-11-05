@@ -71,7 +71,7 @@ func fastInitRetries(t *testing.T) {
 
 func waitDone(t *testing.T, initialization *ConsulInitialization) {
 	select {
-	case <-initialization.Done():
+	case <-initialization.done:
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Consul initialization did not complete in 10s; readiness is %+v", initialization.HealthCheck())
 	}

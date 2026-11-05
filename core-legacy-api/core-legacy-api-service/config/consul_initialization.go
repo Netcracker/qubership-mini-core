@@ -65,10 +65,6 @@ func (i *ConsulInitialization) setErr(err error) {
 	i.err = err
 }
 
-func (i *ConsulInitialization) Done() <-chan struct{} {
-	return i.done
-}
-
 func (i *ConsulInitialization) HealthCheck() health.Status {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
