@@ -108,5 +108,5 @@ func isConsulACLDisabled(err error) bool {
 	var statusErr api.StatusError
 	return errors.As(err, &statusErr) &&
 		statusErr.Code == http.StatusUnauthorized &&
-		strings.Contains(statusErr.Body, consulACLDisabledMessage)
+		strings.TrimSpace(statusErr.Body) == consulACLDisabledMessage
 }

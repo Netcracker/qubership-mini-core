@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +15,8 @@ import (
 	"github.com/netcracker/qubership-core-lib-go/v3/security/tokensource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const projectedToken = "projected-service-account-token"
@@ -180,6 +183,7 @@ func TestLoginConsulToken_ReturnsOtherLoginErrors(t *testing.T) {
 		{"unauthorized for another reason", http.StatusUnauthorized, "ACL not found"},
 		{"Consul fails", http.StatusInternalServerError, "rpc error"},
 		{"ACL support disabled with another status", http.StatusForbidden, "ACL support disabled"},
+		{"401 whose body only contains the ACL disabled text", http.StatusUnauthorized, "ACL support disabled for this token"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -205,4 +209,37 @@ func TestLoginConsulToken_ALoginThatFailedSucceedsOnTheNextCall(t *testing.T) {
 	require.NoError(t, token.Login())
 
 	assert.Equal(t, "login-token", token.SecretID())
+}
+
+func startConsulWithACLsDisabled(t *testing.T, image string) string {
+	ctx := context.Background()
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        image,
+			ExposedPorts: []string{"8500/tcp"},
+			Cmd:          []string{"agent", "-dev", "-client", "0.0.0.0"},
+			WaitingFor:   wait.ForListeningPort("8500/tcp"),
+		},
+		Started: true,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.Terminate(ctx) })
+	host, err := container.Host(ctx)
+	require.NoError(t, err)
+	port, err := container.MappedPort(ctx, "8500")
+	require.NoError(t, err)
+	return fmt.Sprintf("http://%s:%s", host, port.Port())
+}
+
+func TestLoginConsulToken_RealConsulWithACLsDisabledWorksWithoutAToken(t *testing.T) {
+	for _, image := range []string{"hashicorp/consul:1.8.9", "hashicorp/consul:2.0.4"} {
+		t.Run(image, func(t *testing.T) {
+			address := startConsulWithACLsDisabled(t, image)
+			token := newLoginConsulToken(context.Background(), address)
+
+			require.NoError(t, token.Login())
+
+			assert.Equal(t, "", token.SecretID())
+		})
+	}
 }

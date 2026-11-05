@@ -24,14 +24,13 @@ const namespace = "test-ns"
 func anonymous() string { return "" }
 
 // ConsulServiceTestSuite mirrors the Java ConsulServiceTest: it spins up a
-// real Consul dev-mode container per test and exercises ConsulService, and
-// the Consul login, against it.
+// real Consul dev-mode container per test and exercises ConsulService
+// against it.
 type ConsulServiceTestSuite struct {
 	suite.Suite
 
 	ctx           context.Context
 	consulC       testcontainers.Container
-	consulAddress string
 	consulClient  *api.Client
 	consulService ConfigService
 }
@@ -62,7 +61,6 @@ func (s *ConsulServiceTestSuite) SetupTest() {
 	port, err := consulC.MappedPort(s.ctx, "8500")
 	require.NoError(s.T(), err)
 
-	s.consulAddress = fmt.Sprintf("http://%s:%s", host, port.Port())
 	cfg := api.DefaultConfig()
 	cfg.Address = fmt.Sprintf("%s:%s", host, port.Port())
 
@@ -306,14 +304,6 @@ func (s *ConsulServiceTestSuite) TestSaveSeveralBigProperties() {
 	pair, _, err = s.consulClient.KV().Get(prefix+"my/lovely/key3", nil)
 	s.Require().NoError(err)
 	s.NotNil(pair)
-}
-
-func (s *ConsulServiceTestSuite) TestLoginToConsulWithACLsDisabledWorksWithoutAToken() {
-	token := newLoginConsulToken(s.ctx, s.consulAddress)
-
-	s.Require().NoError(token.Login())
-
-	s.Equal("", token.SecretID())
 }
 
 func TestConsulService_SendsTheCurrentTokenWithEachRequest(t *testing.T) {
