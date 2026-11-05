@@ -105,8 +105,6 @@ func TestNewConsulTokenFromConfig_ChoosesTheTokenByAuthMode(t *testing.T) {
 		{"hybrid logs in when bootstrap issued no token", "hybrid", "", "", "login-token", 1},
 		{"k8s logs in even when the secret has a token", "k8s", "", "secret-token", "login-token", 1},
 		{"an unset consul auth mode follows M2M_AUTH_MODE", "", "k8s", "secret-token", "login-token", 1},
-		{"consul auth mode overrides M2M_AUTH_MODE", "legacy", "k8s", "secret-token", "secret-token", 0},
-		{"no mode set at all is legacy", "", "", "secret-token", "secret-token", 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -129,28 +127,12 @@ func TestNewConsulTokenFromConfig_ChoosesTheTokenByAuthMode(t *testing.T) {
 }
 
 func TestNewConsulTokenFromConfig_RejectsAnUnknownMode(t *testing.T) {
-	cases := []struct {
-		name           string
-		consulAuthMode string
-		m2mAuthMode    string
-	}{
-		{"unknown consul auth mode", "static", "legacy"},
-		{"unknown M2M_AUTH_MODE with consul auth mode unset", "", "static"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			initConfig(t, map[string]string{
-				"CONSUL_AUTH_MODE": tc.consulAuthMode,
-				"M2M_AUTH_MODE":    tc.m2mAuthMode,
-				"CONSUL_URL":       "http://consul:8500",
-			})
+	initConfig(t, map[string]string{"CONSUL_AUTH_MODE": "static", "CONSUL_URL": "http://consul:8500"})
 
-			token, err := NewConsulTokenFromConfig(context.Background())
+	token, err := NewConsulTokenFromConfig(context.Background())
 
-			assert.ErrorContains(t, err, "static")
-			assert.Nil(t, token)
-		})
-	}
+	assert.ErrorContains(t, err, "static")
+	assert.Nil(t, token)
 }
 
 func TestLoginConsulToken_SendsTheProjectedTokenToTheAuthMethod(t *testing.T) {

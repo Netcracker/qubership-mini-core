@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -11,7 +10,6 @@ import (
 	"github.com/hashicorp/consul/api"
 	consul "github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
-	"github.com/netcracker/qubership-core-lib-go/v3/security"
 )
 
 const consulACLDisabledMessage = "ACL support disabled"
@@ -22,7 +20,7 @@ type ConsulToken interface {
 }
 
 func NewConsulTokenFromConfig(ctx context.Context) (ConsulToken, error) {
-	mode, err := consulAuthMode()
+	mode, err := consul.ReadAuthMode()
 	if err != nil {
 		return nil, err
 	}
@@ -35,24 +33,6 @@ func NewConsulTokenFromConfig(ctx context.Context) (ConsulToken, error) {
 	}
 	logger.InfoC(ctx, "Consul auth mode is '%s': logging in to Consul with the service account token", mode)
 	return newLoginConsulToken(ctx, configloader.GetOrDefaultString("consul.url", "")), nil
-}
-
-func consulAuthMode() (consul.AuthMode, error) {
-	if mode := configloader.GetOrDefaultString("consul.auth.mode", ""); mode != "" {
-		switch consul.AuthMode(mode) {
-		case consul.AuthModeLegacy, consul.AuthModeHybrid, consul.AuthModeK8s:
-			return consul.AuthMode(mode), nil
-		default:
-			return "", fmt.Errorf("unknown value '%s' of property 'consul.auth.mode': expected one of '%s', '%s', '%s'",
-				mode, consul.AuthModeLegacy, consul.AuthModeHybrid, consul.AuthModeK8s)
-		}
-	}
-	m2mMode, err := security.ReadM2MAuthMode()
-	if err != nil {
-		return "", fmt.Errorf("property 'consul.auth.mode' is not set, so the Consul auth mode is taken from %s: %w",
-			security.M2MAuthModeEnv, err)
-	}
-	return consul.AuthMode(m2mMode), nil
 }
 
 type staticConsulToken string
