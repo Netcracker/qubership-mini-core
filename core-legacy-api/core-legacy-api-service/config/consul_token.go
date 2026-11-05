@@ -20,10 +20,11 @@ type ConsulToken interface {
 }
 
 func NewConsulTokenFromConfig(ctx context.Context) (ConsulToken, error) {
-	mode, err := consul.ReadAuthMode()
+	settings, err := consul.ReadAuthSettings()
 	if err != nil {
 		return nil, err
 	}
+	mode := settings.Mode
 	if mode != consul.AuthModeK8s {
 		staticToken := configloader.GetOrDefaultString("consul.token", "")
 		if mode == consul.AuthModeLegacy || staticToken != "" {
