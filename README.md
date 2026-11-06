@@ -35,6 +35,7 @@ The parameters below configure the service itself.
 | Parameter | Default | Purpose |
 | --- | --- | --- |
 | `CONSUL_URL` | none | URL of the Consul server that stores the properties. The service does not start without it. |
+| `CONSUL_AUTH_MODE` | empty, which takes `M2M_AUTH_MODE` | How the service gets its Consul ACL tokens: `legacy`, `hybrid`, or `k8s`. See [Consul access](core-legacy-api/docs/06-replacing-config-server.md#consul-access). |
 | `BASELINE_PROJ` | none | Namespace of a config-server whose `global` properties `tenant.default.id` and `bss.tenant.default-id` are copied to `global` when `global` does not have them. Unset, or an unreachable config-server, skips the copy. |
 | `LOG_LEVEL` | `info` | Log level. |
 | `TRACING_ENABLED` | `false` | Sends traces to `TRACING_HOST`. |
