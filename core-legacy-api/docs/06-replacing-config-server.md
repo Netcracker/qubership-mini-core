@@ -56,20 +56,20 @@ reads its log levels, so one parameter switches both.
 | Mode | Token for properties | `ConsulACL` resource |
 | --- | --- | --- |
 | `legacy` | The static token from the `config-server-consul-token` secret, as in config-server | Not created |
-| `hybrid` | The token from the secret when core-bootstrap issued one, otherwise a login | Created when the cluster serves the `ConsulACL` CRD of `netcracker.com/v1alpha1` |
+| `hybrid` | The token from the secret when core-bootstrap issued one, otherwise a login | Created when the cluster serves the `ConsulACL` CRD of `netcracker.com/v1` |
 | `k8s` | A login; the secret is not mounted | Created; the chart fails to render when the cluster does not serve the CRD |
 
 A login presents the projected ServiceAccount token with the audience `netcracker` to the Consul auth method
 `applications-k8s-m2m`. The chart projects only that audience and the operator binds the role under its default
-method, so the login works only with `CONSUL_AUTH_AUDIENCE` and `CONSUL_AUTH_METHOD` left empty. When the issued
-token has an expiration time, the service logs in again before it expires. In `hybrid` the service chooses between the
-secret and a login once, at startup, and core-bootstrap decides whether the secret exists: it issues no token where
-Consul has the auth method with the audience among its bound audiences. A static token that stops working is not
-replaced by a login until the pod restarts.
+method, so the login works only with `CONSUL_AUTH_AUDIENCE` and `CONSUL_AUTH_METHOD` left empty. The service logs in
+again before the issued token expires. In `hybrid` the service chooses between the secret and a login once, at
+startup, and core-bootstrap decides whether the secret exists: it issues no token where Consul has the auth method with
+the audience among its bound audiences. A static token that stops working is not replaced by a login until the pod
+restarts.
 
 The `ConsulACL` resource is named after `SERVICE_NAME`. The Consul ACL configurator turns it into a policy that writes
 `config/<namespace>/`, a policy that reads `logging/<namespace>/<SERVICE_NAME>`, a role with both, and a binding rule
-that gives the role to the `SERVICE_NAME` ServiceAccount. The resource sets `spec.acl.operatorNamespace` to the second
+that gives the role to the `SERVICE_NAME` ServiceAccount. The resource sets `spec.operatorNamespace` to the second
 label of the host in `CONSUL_URL`, so `http://consul-server.consul-service:8500` selects the operator in
 `consul-service`. A host without a dot leaves the field out. Until the operator has created the binding rule, the login
 fails and the service retries it; see [Health](#health).

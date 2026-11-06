@@ -23,7 +23,7 @@
       "BindName" "service"
       "ServiceAccountName" .Values.SERVICE_NAME)) }}
 ---
-apiVersion: netcracker.com/v1alpha1
+apiVersion: netcracker.com/v1
 kind: ConsulACL
 metadata:
   name: '{{ .Values.SERVICE_NAME }}'
@@ -33,10 +33,10 @@ metadata:
     app.kubernetes.io/managed-by: 'saasDeployer'
     deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
 spec:
+{{- if gt (len $consulHostParts) 1 }}
+  operatorNamespace: {{ index $consulHostParts 1 | quote }}
+{{- end }}
   acl:
     name: '{{ .Values.SERVICE_NAME }}'
-{{- if gt (len $consulHostParts) 1 }}
-    operatorNamespace: {{ index $consulHostParts 1 | quote }}
-{{- end }}
     json: {{ toJson $acl | quote }}
 {{- end }}
