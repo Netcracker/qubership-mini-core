@@ -35,8 +35,8 @@ releases in one namespace. The `config-server` Service selects only `core-legacy
 | --- | --- | --- |
 | Service | `config-server` | `config-server` |
 | Email secret | `config-server-email-secret` | `config-server-email-secret` |
-| Consul token secret | `config-server-consul-token`, required | `config-server-consul-token`, optional; not mounted with `CONSUL_AUTH_MODE` `k8s` |
-| `ConsulACL` resource | None | Named after `SERVICE_NAME`, with `CONSUL_AUTH_MODE` `hybrid` or `k8s`; see [Consul access](#consul-access) |
+| Consul token secret | `config-server-consul-token`, required | `config-server-consul-token`, optional; not mounted in mode `k8s` |
+| `ConsulACL` resource | None | Named after `SERVICE_NAME`, in mode `hybrid` or `k8s`; see [Consul access](#consul-access) |
 | Deployment, pods, container, ServiceAccount, HPA | `config-server` | `core-legacy-api` |
 | PodMonitor | `config-server-pod-monitor` | `core-legacy-api-pod-monitor` |
 | PodMonitor label `app.kubernetes.io/part-of` | `Cloud-Core` | `platform-monitoring` |
@@ -59,12 +59,13 @@ reads its log levels, so one parameter switches both.
 | `hybrid` | The token from the secret when core-bootstrap issued one, otherwise a login | Created when the cluster serves the `ConsulACL` CRD of `netcracker.com/v1alpha1` |
 | `k8s` | A login; the secret is not mounted | Created; the chart fails to render when the cluster does not serve the CRD |
 
-A login presents the projected ServiceAccount token with the audience `CONSUL_AUTH_AUDIENCE` (default `netcracker`) to
-the Consul auth method `CONSUL_AUTH_METHOD` (default `applications-k8s-m2m`). When the issued token has an expiration
-time, the service logs in again before it expires. In `hybrid` the service chooses between the secret and a login once,
-at startup, and core-bootstrap decides whether the secret exists: it issues no token where Consul has the auth method
-with the audience among its bound audiences. A static token that stops working is not replaced by a login until the
-pod restarts.
+A login presents the projected ServiceAccount token with the audience `netcracker` to the Consul auth method
+`applications-k8s-m2m`. The chart projects only that audience and the operator binds the role under its default
+method, so the login works only with `CONSUL_AUTH_AUDIENCE` and `CONSUL_AUTH_METHOD` left empty. When the issued
+token has an expiration time, the service logs in again before it expires. In `hybrid` the service chooses between the
+secret and a login once, at startup, and core-bootstrap decides whether the secret exists: it issues no token where
+Consul has the auth method with the audience among its bound audiences. A static token that stops working is not
+replaced by a login until the pod restarts.
 
 The `ConsulACL` resource is named after `SERVICE_NAME`. The Consul ACL configurator turns it into a policy that writes
 `config/<namespace>/`, a policy that reads `logging/<namespace>/<SERVICE_NAME>`, a role with both, and a binding rule

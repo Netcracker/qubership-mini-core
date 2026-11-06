@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 	"sync/atomic"
 
 	"github.com/hashicorp/consul/api"
@@ -89,5 +88,5 @@ func isConsulACLDisabled(err error) bool {
 	var statusErr api.StatusError
 	return errors.As(err, &statusErr) &&
 		statusErr.Code == http.StatusUnauthorized &&
-		strings.TrimSpace(statusErr.Body) == consulACLDisabledMessage
+		statusErr.Body == consulACLDisabledMessage
 }

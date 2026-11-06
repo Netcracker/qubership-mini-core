@@ -165,7 +165,7 @@ func TestLoginConsulToken_ReturnsOtherLoginErrors(t *testing.T) {
 		{"unauthorized for another reason", http.StatusUnauthorized, "ACL not found"},
 		{"Consul fails", http.StatusInternalServerError, "rpc error"},
 		{"ACL support disabled with another status", http.StatusForbidden, "ACL support disabled"},
-		{"401 whose body only contains the ACL disabled text", http.StatusUnauthorized, "ACL support disabled for this token"},
+		{"401 whose body adds words to the ACL disabled text", http.StatusUnauthorized, "ACL support disabled for this token"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
