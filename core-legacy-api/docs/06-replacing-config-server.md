@@ -197,15 +197,15 @@ sum by (path) (rate(http_request_status{container="core-legacy-api"}[5m]))
 | --- | --- | --- |
 | `/health` | Spring Boot Actuator, with components such as `consul` and `diskSpace`: `{"status":...,"components":{...}}` | Always `{"status":"UP"}`, no checks |
 | `/health/liveness` | Actuator group with only `livenessState` | The same response as `/health` |
-| `/health/readiness` | Actuator group with only `readinessState`: 200 after startup, whatever the state of Consul | The same response as `/readiness`: 503 while Consul is unreachable or the startup initialization has not completed |
-| `/readiness` | None | `{"status":...,"ConsulCheck":{"status":...},"ConsulInitialization":{"status":...}}`; `PROBLEM` returns 503, `WARNING` returns 200 |
+| `/health/readiness` | Actuator group with only `readinessState`: 200 after startup, whatever the state of Consul | The same response as `/readiness`: 503 while Consul is unreachable |
+| `/readiness` | None | `{"status":...,"ConsulCheck":{"status":...}}`; `PROBLEM` returns 503, `WARNING` returns 200 |
 
 The chart points the readiness probe at `/readiness` and the liveness and startup probes at `/health`. When Consul
 becomes unreachable after startup, pods leave the Service and are not restarted. At startup the service logs in to
-Consul and writes the default properties. Until both succeed, `ConsulInitialization` reports `PROBLEM` with the last
-error, and the service retries after a delay that doubles from 1 second up to 1 minute; the pod is not restarted. A
-check that used config-server `/health` to see whether Consul is reachable has to call `/readiness` or
-`/health/readiness`.
+Consul and writes the default properties before it serves requests, and retries both every 5 seconds until they
+succeed. The startup probe restarts the pod when that takes longer than the probe allows: about a minute with the
+chart defaults, set by `PROBE_STARTUP_*`. A check that used config-server `/health` to see whether Consul is reachable
+has to call `/readiness` or `/health/readiness`.
 
 ## Tracing
 

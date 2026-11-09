@@ -47,7 +47,10 @@ func RunService() {
 		panic(err)
 	}
 	consulService := config.NewConsulServiceFromConfig(consulToken.SecretID)
-	consulInitialization := config.StartConsulInitialization(ctx, consulToken, consulService)
+	if err := config.InitializeConsul(ctx, consulToken, consulService); err != nil {
+		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
+		panic(err)
+	}
 
 	healthService, err := health.NewHealthService()
 	if err != nil {
@@ -86,7 +89,6 @@ func RunService() {
 	})
 
 	readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)
-	readinessService.AddCheck("ConsulInitialization", consulInitialization.HealthCheck)
 	registerProbeEndpoints(app, healthService, readinessService)
 
 	configController := config.NewConfigPropertiesController(consulService)

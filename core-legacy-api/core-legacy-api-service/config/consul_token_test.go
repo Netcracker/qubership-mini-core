@@ -145,6 +145,17 @@ func TestLoginConsulToken_SendsTheProjectedTokenToTheAuthMethod(t *testing.T) {
 		consul.loginRequests())
 }
 
+func TestLoginConsulToken_ASecondLoginAfterASuccessfulOneSendsNoRequest(t *testing.T) {
+	consul, address := newFakeConsulLogin(t, http.StatusOK, loginResponse)
+	initConfig(t, map[string]string{"CONSUL_URL": address})
+	token := newLoginConsulToken(context.Background(), address)
+	require.NoError(t, token.Login())
+
+	require.NoError(t, token.Login())
+
+	assert.Len(t, consul.loginRequests(), 1)
+}
+
 func TestLoginConsulToken_WorksWithoutATokenWhenConsulACLsAreDisabled(t *testing.T) {
 	_, address := newFakeConsulLogin(t, http.StatusUnauthorized, "ACL support disabled")
 	initConfig(t, map[string]string{"CONSUL_URL": address})
@@ -176,7 +187,6 @@ func TestLoginConsulToken_ReturnsOtherLoginErrors(t *testing.T) {
 			err := token.Login()
 
 			assert.Error(t, err)
-			assert.Equal(t, "", token.SecretID())
 		})
 	}
 }

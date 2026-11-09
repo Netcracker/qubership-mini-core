@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"sync/atomic"
 
 	"github.com/hashicorp/consul/api"
 	consul "github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
@@ -46,9 +45,9 @@ func (t staticConsulToken) SecretID() string {
 }
 
 type loginConsulToken struct {
-	ctx      context.Context
-	client   *consul.Client
-	loggedIn atomic.Bool
+	ctx         context.Context
+	client      *consul.Client
+	aclDisabled bool
 }
 
 func newLoginConsulToken(ctx context.Context, address string) *loginConsulToken {
@@ -63,22 +62,17 @@ func newLoginConsulToken(ctx context.Context, address string) *loginConsulToken 
 }
 
 func (t *loginConsulToken) Login() error {
-	if t.loggedIn.Load() {
-		return nil
-	}
-	if err := t.client.Login(); err != nil {
-		if !isConsulACLDisabled(err) {
-			return err
-		}
+	err := t.client.Login()
+	if isConsulACLDisabled(err) {
 		logger.InfoC(t.ctx, "Consul ACLs are disabled: working without a Consul token")
+		t.aclDisabled = true
 		return nil
 	}
-	t.loggedIn.Store(true)
-	return nil
+	return err
 }
 
 func (t *loginConsulToken) SecretID() string {
-	if !t.loggedIn.Load() {
+	if t.aclDisabled {
 		return ""
 	}
 	return t.client.SecretId()
