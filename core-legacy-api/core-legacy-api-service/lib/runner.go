@@ -12,7 +12,7 @@ import (
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/tracing"
 	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2"
 	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
-	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
+	consulpropertysource "github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/podsecrets-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 	"github.com/netcracker/qubership-core-lib-go/v3/context-propagation/baseproviders"
@@ -34,23 +34,20 @@ var (
 
 func RunService() {
 	ctxmanager.Register(baseproviders.Get())
-	consulPS := consul.NewLoggingPropertySource()
+	consulPS := consulpropertysource.NewLoggingPropertySource()
 	sources := configloader.BasePropertySources()
 	sources = podsecrets.AddPodSecretsPropertySource(sources)
 	configloader.InitWithSourcesArray(append(sources, consulPS))
 
-	consul.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {})
+	consulpropertysource.StartWatchingForPropertiesWithRetry(ctx, consulPS, func(event interface{}, err error) {})
 
-	consulToken, err := config.NewConsulTokenFromConfig(ctx)
+	consulToken, err := config.NewConsulACLTokenFromConfig(ctx)
 	if err != nil {
 		logger.Errorf("Couldn't configure the Consul token: %s", err.Error())
 		panic(err)
 	}
 	consulService := config.NewConsulServiceFromConfig(consulToken.SecretID)
-	if err := config.InitializeConsul(ctx, consulToken, consulService); err != nil {
-		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
-		panic(err)
-	}
+	config.InitializeConsul(ctx, consulToken, consulService)
 
 	healthService, err := health.NewHealthService()
 	if err != nil {

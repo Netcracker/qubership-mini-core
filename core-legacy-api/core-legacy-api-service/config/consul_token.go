@@ -6,62 +6,67 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/consul/api"
-	consul "github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
+	consulpropertysource "github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 )
 
+// TODO: remove the ACL support disabled check once rest-utils#125 is released.
 const consulACLDisabledMessage = "ACL support disabled"
 
-type ConsulToken interface {
-	Login() error
+// ConsulACLToken is the ACL token that ConsulService sends with each request to Consul. Acquire gets the token and
+// fails while Consul does not grant it yet; SecretID returns the current token once Acquire has succeeded.
+type ConsulACLToken interface {
+	Acquire() error
 	SecretID() string
 }
 
-func NewConsulTokenFromConfig(ctx context.Context) (ConsulToken, error) {
-	settings, err := consul.ReadAuthSettings()
+func NewConsulACLTokenFromConfig(ctx context.Context) (ConsulACLToken, error) {
+	settings, err := consulpropertysource.ReadAuthSettings()
 	if err != nil {
 		return nil, err
 	}
 	mode := settings.Mode
-	if mode != consul.AuthModeK8s {
-		staticToken := configloader.GetOrDefaultString("consul.token", "")
-		if mode == consul.AuthModeLegacy || staticToken != "" {
+	if mode != consulpropertysource.AuthModeK8s {
+		token := configloader.GetOrDefaultString("consul.token", "")
+		if mode == consulpropertysource.AuthModeLegacy || token != "" {
 			logger.InfoC(ctx, "Consul auth mode is '%s': using the token from the config-server-consul-token secret", mode)
-			return staticConsulToken(staticToken), nil
+			return secretACLToken(token), nil
 		}
 	}
 	logger.InfoC(ctx, "Consul auth mode is '%s': logging in to Consul with the service account token", mode)
-	return newLoginConsulToken(ctx, configloader.GetOrDefaultString("consul.url", "")), nil
+	return newServiceAccountACLToken(ctx, configloader.GetOrDefaultString("consul.url", "")), nil
 }
 
-type staticConsulToken string
+// secretACLToken is the token that core-bootstrap stores in the config-server-consul-token secret.
+type secretACLToken string
 
-func (t staticConsulToken) Login() error {
+func (t secretACLToken) Acquire() error {
 	return nil
 }
 
-func (t staticConsulToken) SecretID() string {
+func (t secretACLToken) SecretID() string {
 	return string(t)
 }
 
-type loginConsulToken struct {
+// serviceAccountACLToken is the token that Consul issues for a login with the projected ServiceAccount token.
+type serviceAccountACLToken struct {
 	ctx         context.Context
-	client      *consul.Client
+	client      *consulpropertysource.Client
 	aclDisabled bool
 }
 
-func newLoginConsulToken(ctx context.Context, address string) *loginConsulToken {
-	return &loginConsulToken{
+func newServiceAccountACLToken(ctx context.Context, consulURL string) *serviceAccountACLToken {
+	return &serviceAccountACLToken{
 		ctx: ctx,
-		client: consul.NewClient(consul.ClientConfig{
-			Address: address,
+		client: consulpropertysource.NewClient(consulpropertysource.ClientConfig{
+			Address: consulURL,
 			Ctx:     ctx,
-			Mode:    consul.AuthModeK8s,
+			Mode:    consulpropertysource.AuthModeK8s,
 		}),
 	}
 }
 
-func (t *loginConsulToken) Login() error {
+func (t *serviceAccountACLToken) Acquire() error {
 	err := t.client.Login()
 	if isConsulACLDisabled(err) {
 		logger.InfoC(t.ctx, "Consul ACLs are disabled: working without a Consul token")
@@ -71,7 +76,7 @@ func (t *loginConsulToken) Login() error {
 	return err
 }
 
-func (t *loginConsulToken) SecretID() string {
+func (t *serviceAccountACLToken) SecretID() string {
 	if t.aclDisabled {
 		return ""
 	}

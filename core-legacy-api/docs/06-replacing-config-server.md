@@ -49,9 +49,8 @@ The logical database that config-server used in DBaaS is not used by `core-legac
 
 ## Consul access
 
-`CONSUL_AUTH_MODE` selects how the service gets the Consul ACL token it reads and writes properties with. When it is
-empty, `M2M_AUTH_MODE` selects it, and an empty `M2M_AUTH_MODE` means `legacy`. The same value selects how the service
-reads its log levels, so one parameter switches both.
+`CONSUL_AUTH_MODE` selects how the service gets the Consul ACL token it reads and writes properties with, and how it
+reads its log levels. When it is empty, `M2M_AUTH_MODE` selects it, and an empty `M2M_AUTH_MODE` means `legacy`.
 
 | Mode | Token for properties | `ConsulACL` resource |
 | --- | --- | --- |
@@ -60,25 +59,19 @@ reads its log levels, so one parameter switches both.
 | `k8s` | A login; the secret is not mounted | Created; the chart fails to render when the cluster does not serve the CRD |
 
 A login presents the projected ServiceAccount token with the audience `netcracker` to the Consul auth method
-`applications-k8s-m2m`. The chart projects only that audience and the operator binds the role under its default
-method, so the login works only with `CONSUL_AUTH_AUDIENCE` and `CONSUL_AUTH_METHOD` left empty. The service logs in
-again before the issued token expires. In `hybrid` the service chooses between the secret and a login once, at
-startup, and core-bootstrap decides whether the secret exists: it issues no token where Consul has the auth method with
-the audience among its bound audiences. A static token that stops working is not replaced by a login until the pod
-restarts.
+`applications-k8s-m2m`. The chart projects only that audience, so leave `CONSUL_AUTH_AUDIENCE` and
+`CONSUL_AUTH_METHOD` empty. The service logs in again before the token expires. In `hybrid` the choice is made once,
+at startup: core-bootstrap issues no token when the auth method accepts the audience.
 
-The `ConsulACL` resource is named after `SERVICE_NAME`. The Consul ACL configurator turns it into a policy that writes
-`config/<namespace>/`, a policy that reads `logging/<namespace>/<SERVICE_NAME>`, a role with both, and a binding rule
-that gives the role to the `SERVICE_NAME` ServiceAccount. The resource sets `spec.operatorNamespace` to the second
-label of the host in `CONSUL_URL`, so `http://consul-server.consul-service:8500` selects the operator in
-`consul-service`. A host without a dot leaves the field out. Until the operator has created the binding rule, the login
-fails and the service retries it; see [Health](#health).
+The `ConsulACL` resource, named after `SERVICE_NAME`, lets the `SERVICE_NAME` ServiceAccount write `config/<namespace>/`
+and read `logging/<namespace>/<SERVICE_NAME>`. An existing binding rule for the `config-server` ServiceAccount does
+not grant the service access. `spec.operatorNamespace` is the second label of the host in `CONSUL_URL`:
+`http://consul-server.consul-service:8500` selects the operator in `consul-service`, and a host without a dot leaves
+the field out. Until the operator applies the resource, the login fails and the service retries it; see
+[Health](#health).
 
 Where Consul has ACLs disabled, it answers the login with `ACL support disabled`, and the service works without a
 token.
-
-The binding rule matches the `core-legacy-api` ServiceAccount, so a binding rule that matches the `config-server`
-ServiceAccount name does not apply to the service.
 
 The service reads its log levels only from `logging/<namespace>/core-legacy-api`. Overrides stored under
 `logging/<namespace>/config-server` and `logging/<namespace>/application` no longer apply to it. It does not read its

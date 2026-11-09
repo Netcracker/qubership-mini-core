@@ -8,17 +8,18 @@ import (
 
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-type failingToken struct {
-	failures []error
-	logins   int
+type failingACLToken struct {
+	failures  []error
+	acquired  int
+	succeeded bool
 }
 
-func (t *failingToken) Login() error {
-	t.logins++
+func (t *failingACLToken) Acquire() error {
+	t.acquired++
 	if len(t.failures) == 0 {
+		t.succeeded = true
 		return nil
 	}
 	err := t.failures[0]
@@ -26,14 +27,16 @@ func (t *failingToken) Login() error {
 	return err
 }
 
-func (t *failingToken) SecretID() string {
+func (t *failingACLToken) SecretID() string {
 	return ""
 }
 
 type memoryConfigService struct {
 	ConfigService
-	failures    []error
-	addedByApps map[string]map[string]string
+	token             *failingACLToken
+	failures          []error
+	writesBeforeToken int
+	addedByApps       map[string]map[string]string
 }
 
 func (s *memoryConfigService) FindByApplicationAndProfile(_ context.Context, application string, profile string) (model.ConfigProfile, error) {
@@ -41,6 +44,9 @@ func (s *memoryConfigService) FindByApplicationAndProfile(_ context.Context, app
 }
 
 func (s *memoryConfigService) AddProperties(_ context.Context, application string, _ string, properties map[string]string) error {
+	if s.token != nil && !s.token.succeeded {
+		s.writesBeforeToken++
+	}
 	if len(s.failures) > 0 {
 		err := s.failures[0]
 		s.failures = s.failures[1:]
@@ -59,36 +65,25 @@ func setInitRetryDelay(t *testing.T, delay time.Duration) {
 	t.Cleanup(func() { initRetryDelay = previous })
 }
 
-func TestInitializeConsul_RetriesAFailedLoginAndThenWritesTheDefaults(t *testing.T) {
+func TestInitializeConsul_RetriesTheTokenAndThenWritesTheDefaults(t *testing.T) {
 	setInitRetryDelay(t, time.Millisecond)
-	token := &failingToken{failures: []error{errors.New("Permission denied")}}
-	service := &memoryConfigService{}
+	token := &failingACLToken{failures: []error{errors.New("Permission denied")}}
+	service := &memoryConfigService{token: token}
 
-	err := InitializeConsul(context.Background(), token, service)
+	InitializeConsul(context.Background(), token, service)
 
-	require.NoError(t, err)
-	assert.Equal(t, 2, token.logins)
+	assert.Equal(t, 2, token.acquired)
+	assert.Equal(t, 0, service.writesBeforeToken)
 	assert.Equal(t, "http://internal-gateway-service:8080", service.addedByApps["global"]["apigateway.internal.url"])
 }
 
-func TestInitializeConsul_RetriesAFailedWriteOfTheDefaults(t *testing.T) {
+func TestInitializeConsul_RetriesAFailedWriteOfTheDefaultsWithoutAcquiringTheTokenAgain(t *testing.T) {
 	setInitRetryDelay(t, time.Millisecond)
+	token := &failingACLToken{}
 	service := &memoryConfigService{failures: []error{errors.New("consul transaction rejected")}}
 
-	err := InitializeConsul(context.Background(), staticConsulToken(""), service)
+	InitializeConsul(context.Background(), token, service)
 
-	require.NoError(t, err)
+	assert.Equal(t, 1, token.acquired)
 	assert.Equal(t, "http://internal-gateway-service:8080", service.addedByApps["global"]["apigateway.internal.url"])
-}
-
-func TestInitializeConsul_StopsWaitingForTheNextAttemptWhenTheServiceShutsDown(t *testing.T) {
-	setInitRetryDelay(t, time.Hour)
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	token := &failingToken{failures: []error{errors.New("Permission denied")}}
-
-	err := InitializeConsul(ctx, token, &memoryConfigService{})
-
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Equal(t, 1, token.logins)
 }
