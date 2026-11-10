@@ -60,18 +60,14 @@ reads its log levels. When it is empty, `M2M_AUTH_MODE` selects it, and an empty
 
 A login presents the projected ServiceAccount token with the audience `netcracker` to the Consul auth method
 `applications-k8s-m2m`. The chart projects only that audience, so leave `CONSUL_AUTH_AUDIENCE` and
-`CONSUL_AUTH_METHOD` empty. The service logs in again before the token expires. In `hybrid` the choice is made once,
-at startup: core-bootstrap issues no token when the auth method accepts the audience.
+`CONSUL_AUTH_METHOD` empty. In `hybrid` the service chooses the token once, at startup.
 
 The `ConsulACL` resource, named after `SERVICE_NAME`, lets the `SERVICE_NAME` ServiceAccount write `config/<namespace>/`
 and read `logging/<namespace>/<SERVICE_NAME>`. An existing binding rule for the `config-server` ServiceAccount does
-not grant the service access. `spec.operatorNamespace` is the second label of the host in `CONSUL_URL`:
-`http://consul-server.consul-service:8500` selects the operator in `consul-service`, and a host without a dot leaves
-the field out. Until the operator applies the resource, the login fails and the service retries it; see
-[Health](#health).
+not grant the service access. The resource goes to the operator of the Consul namespace named in the host of
+`CONSUL_URL`. Until the operator applies it, the login fails and the service retries it; see [Health](#health).
 
-Where Consul has ACLs disabled, it answers the login with `ACL support disabled`, and the service works without a
-token.
+With Consul ACLs disabled, the service works without a token.
 
 The service reads its log levels only from `logging/<namespace>/core-legacy-api`. Overrides stored under
 `logging/<namespace>/config-server` and `logging/<namespace>/application` no longer apply to it. It does not read its
