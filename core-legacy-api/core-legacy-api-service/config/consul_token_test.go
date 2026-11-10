@@ -131,26 +131,6 @@ func TestServiceAccountACLToken_WorksWithoutATokenWhenConsulACLsAreDisabled(t *t
 	assert.Equal(t, "", token.Value())
 }
 
-func TestServiceAccountACLToken_FailsOnAnswersThatOnlyResembleDisabledACLs(t *testing.T) {
-	cases := []struct {
-		name   string
-		status int
-		body   string
-	}{
-		{"401 with another body", http.StatusUnauthorized, "ACL not found"},
-		{"401 whose body contains the disabled ACLs text among other words", http.StatusUnauthorized, "Permission denied: ACL support disabled for this token"},
-		{"the disabled ACLs text with another status", http.StatusForbidden, "ACL support disabled"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, address := newFakeConsulLogin(t, tc.status, tc.body)
-			token := newServiceAccountACLToken(context.Background(), address)
-
-			assert.Error(t, token.Acquire())
-		})
-	}
-}
-
 func startConsulWithACLsDisabled(t *testing.T, image string) string {
 	ctx := context.Background()
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{

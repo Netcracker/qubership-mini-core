@@ -2,16 +2,10 @@ package config
 
 import (
 	"context"
-	"errors"
-	"net/http"
 
-	"github.com/hashicorp/consul/api"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
 )
-
-// TODO: remove the ACL support disabled check once rest-utils#125 is released.
-const consulACLDisabledMessage = "ACL support disabled"
 
 // ConsulACLToken is the ACL token that ConsulService sends with each request to Consul. Acquire gets the token and
 // fails while Consul does not grant it yet; Value returns the current token once Acquire has succeeded.
@@ -50,14 +44,11 @@ func (t secretACLToken) Value() string {
 
 // serviceAccountACLToken is the token that Consul issues for a login with the projected ServiceAccount token.
 type serviceAccountACLToken struct {
-	ctx         context.Context
-	client      *consul.Client
-	aclDisabled bool
+	client *consul.Client
 }
 
 func newServiceAccountACLToken(ctx context.Context, consulURL string) *serviceAccountACLToken {
 	return &serviceAccountACLToken{
-		ctx: ctx,
 		client: consul.NewClient(consul.ClientConfig{
 			Address: consulURL,
 			Ctx:     ctx,
@@ -67,25 +58,9 @@ func newServiceAccountACLToken(ctx context.Context, consulURL string) *serviceAc
 }
 
 func (t *serviceAccountACLToken) Acquire() error {
-	err := t.client.Login()
-	if isConsulACLDisabled(err) {
-		logger.InfoC(t.ctx, "Consul ACLs are disabled: working without a Consul token")
-		t.aclDisabled = true
-		return nil
-	}
-	return err
+	return t.client.Login()
 }
 
 func (t *serviceAccountACLToken) Value() string {
-	if t.aclDisabled {
-		return ""
-	}
 	return t.client.SecretId()
-}
-
-func isConsulACLDisabled(err error) bool {
-	var statusErr api.StatusError
-	return errors.As(err, &statusErr) &&
-		statusErr.Code == http.StatusUnauthorized &&
-		statusErr.Body == consulACLDisabledMessage
 }
