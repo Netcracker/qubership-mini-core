@@ -75,11 +75,11 @@ func initConfig(t *testing.T, env map[string]string) {
 
 func TestNewConsulACLTokenFromConfig_ChoosesTheTokenByAuthMode(t *testing.T) {
 	cases := []struct {
-		name         string
-		mode         string
-		secretToken  string
-		wantSecretID string
-		wantLogins   []map[string]string
+		name        string
+		mode        string
+		secretToken string
+		wantValue   string
+		wantLogins  []map[string]string
 	}{
 		{"legacy uses the token of the secret", "legacy", "secret-token", "secret-token", nil},
 		{"legacy without a secret works without a token", "legacy", "", "", nil},
@@ -96,7 +96,7 @@ func TestNewConsulACLTokenFromConfig_ChoosesTheTokenByAuthMode(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, token.Acquire())
 
-			assert.Equal(t, tc.wantSecretID, token.SecretID())
+			assert.Equal(t, tc.wantValue, token.Value())
 			assert.Equal(t, tc.wantLogins, consul.requests)
 		})
 	}
@@ -128,7 +128,7 @@ func TestServiceAccountACLToken_WorksWithoutATokenWhenConsulACLsAreDisabled(t *t
 
 	require.NoError(t, token.Acquire())
 
-	assert.Equal(t, "", token.SecretID())
+	assert.Equal(t, "", token.Value())
 }
 
 func TestServiceAccountACLToken_FailsOnAnswersThatOnlyResembleDisabledACLs(t *testing.T) {
@@ -177,5 +177,5 @@ func TestServiceAccountACLToken_RealConsulWithACLsDisabledWorksWithoutAToken(t *
 
 	require.NoError(t, token.Acquire())
 
-	assert.Equal(t, "", token.SecretID())
+	assert.Equal(t, "", token.Value())
 }

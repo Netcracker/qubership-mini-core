@@ -27,7 +27,7 @@ func (t *failingACLToken) Acquire() error {
 	return err
 }
 
-func (t *failingACLToken) SecretID() string {
+func (t *failingACLToken) Value() string {
 	return ""
 }
 
