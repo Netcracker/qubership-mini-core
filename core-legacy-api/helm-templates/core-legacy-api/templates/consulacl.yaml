@@ -1,5 +1,4 @@
-{{- if (include "core-legacy-api.consulAuth" . | fromYaml).consulAcl }}
-{{- $consulHostParts := splitList "." (urlParse (required "CONSUL_URL is required to create the ConsulACL resource" .Values.CONSUL_URL)).hostname }}
+{{- if include "coretpl.consulAclEnabled" $ }}
 ---
 apiVersion: netcracker.com/v1
 kind: ConsulACL
@@ -11,9 +10,7 @@ metadata:
     app.kubernetes.io/managed-by: 'saasDeployer'
     deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
 spec:
-{{- if gt (len $consulHostParts) 1 }}
-  operatorNamespace: {{ index $consulHostParts 1 | quote }}
-{{- end }}
+  operatorNamespace: {{ include "coretpl.consulNamespace" $ | quote }}
   acl:
     name: '{{ .Values.SERVICE_NAME }}'
     json: >

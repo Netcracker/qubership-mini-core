@@ -85,7 +85,7 @@ spec:
                           path: EMAIL_USER
                         - key: password
                           path: EMAIL_PASSWORD
-{{- if (include "core-legacy-api.consulAuth" . | fromYaml).consulTokenSecret }}
+{{- if ne (include "coretpl.consulAuthMode" $) "k8s" }}
             - secret:
                       name: config-server-consul-token
                       optional: true
