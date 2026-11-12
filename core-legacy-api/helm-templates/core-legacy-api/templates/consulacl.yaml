@@ -1,25 +1,62 @@
-{{- if include "coretpl.consulAclEnabled" $ }}
----
+{{- if include "consulacl.enabled" . }}
 apiVersion: netcracker.com/v1
 kind: ConsulACL
 metadata:
-  name: '{{ .Values.SERVICE_NAME }}'
-  namespace: '{{ .Values.NAMESPACE }}'
+  name: {{ .Values.SERVICE_NAME }}
+  namespace: {{ .Values.NAMESPACE }}
   labels:
-    app.kubernetes.io/part-of: 'Cloud-Core'
-    app.kubernetes.io/managed-by: 'saasDeployer'
-    deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
+    deployer.cleanup/allow: "true"
 spec:
-  operatorNamespace: {{ include "coretpl.consulNamespace" $ | quote }}
+  operatorNamespace: {{ include "consulacl.operatorNamespace" . | quote }}
   acl:
-    name: '{{ .Values.SERVICE_NAME }}'
+    name: {{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}
+    explicitName: true
     json: >
       {
-        "policies": [
-          {"Name": "config-write", "Rules": "key_prefix \"config/{{ .Values.NAMESPACE }}/\" { policy = \"write\" }"},
-          {"Name": "logging-read", "Rules": "key_prefix \"logging/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}\" { policy = \"read\" }"}
-        ],
-        "roles": [{"Name": "service", "policy_names": ["config-write", "logging-read"]}],
-        "bind_rules": [{"BindName": "service", "ServiceAccountName": "{{ .Values.SERVICE_NAME }}"}]
+         "policies":[
+            {
+               "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_v2",
+               "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }} prefix policy",
+               "Rules":"key_prefix \"config/{{ .Values.NAMESPACE }}/\" { policy = \"write\" }"
+            },
+            {
+               "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_logging_v2",
+               "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_logging prefix policy",
+               "Rules":"key_prefix \"logging/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}\" { policy = \"read\" }"
+            }
+         ],
+         "roles":[
+            {
+               "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_v2",
+               "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }} role",
+               "policy_names":[
+                  "{{ .Values.NAMESPACE }}_global_shared_v2",
+                  "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_v2",
+                  "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_logging_v2",
+                  "{{ .Values.ORIGIN_NAMESPACE }}_read_bluegreen_v2",
+{{- if .Values.PEER_NAMESPACE }}
+                  "{{ .Values.PEER_NAMESPACE }}_read_bluegreen_v2",
+{{- end }}
+                  "{{ .Values.NAMESPACE }}_read_composite_v2",
+                  "{{ .Values.NAMESPACE }}_read_global_v2",
+                  "{{ .Values.NAMESPACE }}_sessions_v2"
+               ]
+            }
+         ]
       }
+---
+apiVersion: netcracker.com/v1
+kind: ConsulKV
+metadata:
+  name: {{ .Values.SERVICE_NAME }}
+  namespace: {{ .Values.NAMESPACE }}
+  labels:
+    deployer.cleanup/allow: "true"
+spec:
+  operatorNamespace: {{ include "consulacl.operatorNamespace" . | quote }}
+  purgeOnDelete: true
+  kv:
+    - key: "config/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/"
+    - key: "data/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/"
+    - key: "logging/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/"
 {{- end }}
