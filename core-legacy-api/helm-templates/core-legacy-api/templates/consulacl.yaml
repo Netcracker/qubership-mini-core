@@ -38,7 +38,7 @@ spec:
                   "{{ .Values.PEER_NAMESPACE }}_read_bluegreen_v2",
 {{- end }}
                   "{{ .Values.NAMESPACE }}_read_composite_v2",
-                  "{{ .Values.NAMESPACE }}_read_global_v2",
+                  "{{ .Values.NAMESPACE }}_write_global_v2",
                   "{{ .Values.NAMESPACE }}_sessions_v2"
                ]
             }
