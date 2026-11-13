@@ -56,16 +56,19 @@ reads its log levels. When it is empty, `M2M_AUTH_MODE` selects it, and an empty
 | --- | --- | --- |
 | `legacy` | The static token from the `config-server-consul-token` secret, as in config-server | Not created |
 | `hybrid` | The token from the secret when core-bootstrap issued one, otherwise a login | Created when the cluster serves the `ConsulACL` CRD of `netcracker.com/v1` |
-| `k8s` | A login; the secret is not mounted | Created; the chart fails to render when the cluster does not serve the CRD |
+| `k8s` | A login; the secret is not mounted | Created when the cluster serves the CRD; without it the login fails |
 
 A login presents the projected ServiceAccount token with the audience `netcracker` to the Consul auth method
 `applications-k8s-m2m`. The chart projects only that audience, so leave `CONSUL_AUTH_AUDIENCE` and
 `CONSUL_AUTH_METHOD` empty. In `hybrid` the service chooses the token once, at startup.
 
-The `ConsulACL` resource, named after `SERVICE_NAME`, lets the `SERVICE_NAME` ServiceAccount write `config/<namespace>/`
-and read `logging/<namespace>/<SERVICE_NAME>`. An existing binding rule for the `config-server` ServiceAccount does
-not grant the service access. The resource goes to the operator of the Consul namespace named in the host of
-`CONSUL_URL`. Until the operator applies it, the login fails and the service retries it; see [Health](#health).
+The `ConsulACL` resource, named after `SERVICE_NAME`, lets the `SERVICE_NAME` ServiceAccount write
+`config/<namespace>/`, read `logging/<namespace>/<SERVICE_NAME>`, and use the shared `_v2` policies of
+cloud-core-configuration. A `ConsulKV` resource of the same name declares `config/`, `data/`, and
+`logging/<namespace>/<SERVICE_NAME>/`; deleting the release deletes these trees. An existing binding rule for the
+`config-server` ServiceAccount does not grant the service access. Both resources go to the operator of the Consul
+namespace named in the host of `CONSUL_URL`. Until the operator applies the `ConsulACL`, the login fails and the
+service retries it; see [Health](#health).
 
 With Consul ACLs disabled, the service works without a token.
 
