@@ -387,7 +387,8 @@
       "$id": "#/properties/CONSUL_AUTH_MODE",
       "type": "string",
       "title": "The CONSUL_AUTH_MODE schema",
-      "description": "Way the Consul ACL token is obtained: kubernetes-with-m2m-fallback, kubernetes or m2m. Empty means the library default",
+      "description": "How the service gets its Consul ACL tokens: legacy, hybrid, or k8s. Empty means the value of M2M_AUTH_MODE",
+      "enum": ["", "legacy", "hybrid", "k8s"],
       "envSpecific": true
     },
     "CONSUL_AUTH_METHOD": {

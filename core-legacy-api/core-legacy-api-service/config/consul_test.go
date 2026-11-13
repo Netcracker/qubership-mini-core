@@ -3,7 +3,10 @@ package config
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/consul/api"
@@ -17,6 +20,10 @@ import (
 )
 
 const namespace = "test-ns"
+
+const consulImage = "hashicorp/consul:2.0.4"
+
+func anonymous() string { return "" }
 
 // ConsulServiceTestSuite mirrors the Java ConsulServiceTest: it spins up a
 // real Consul dev-mode container per test and exercises ConsulService
@@ -38,7 +45,7 @@ func (s *ConsulServiceTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	req := testcontainers.ContainerRequest{
-		Image:        "hashicorp/consul:1.8.9",
+		Image:        consulImage,
 		ExposedPorts: []string{"8500/tcp"},
 		Cmd:          []string{"agent", "-dev", "-client", "0.0.0.0", "--enable-script-checks=true"},
 		WaitingFor:   wait.ForListeningPort("8500/tcp"),
@@ -63,7 +70,7 @@ func (s *ConsulServiceTestSuite) SetupTest() {
 	require.NoError(s.T(), err)
 
 	s.consulClient = client
-	s.consulService = NewConsulService(client, namespace)
+	s.consulService = NewConsulService(client, namespace, anonymous)
 }
 
 func (s *ConsulServiceTestSuite) TearDownTest() {
@@ -80,7 +87,7 @@ func propertiesAsMap(profile model.ConfigProfile) map[string]string {
 	return result
 }
 func (s *ConsulServiceTestSuite) TestHealthCheck() {
-	service := NewConsulService(s.consulClient, namespace)
+	service := NewConsulService(s.consulClient, namespace, anonymous)
 	status := service.HealthCheck()
 	assert.Equal(s.T(), health.StatusUp, status.Name)
 	assert.Nil(s.T(), status.Details)
@@ -90,7 +97,7 @@ func (s *ConsulServiceTestSuite) TestHealthCheck() {
 	client, err := api.NewClient(cfg)
 	require.NoError(s.T(), err)
 
-	status = NewConsulService(client, namespace).HealthCheck()
+	status = NewConsulService(client, namespace, anonymous).HealthCheck()
 	assert.Equal(s.T(), health.StatusProblem, status.Name)
 	if assert.Contains(s.T(), status.Details, "error") {
 		assert.NotEmpty(s.T(), status.Details["error"])
@@ -299,4 +306,44 @@ func (s *ConsulServiceTestSuite) TestSaveSeveralBigProperties() {
 	pair, _, err = s.consulClient.KV().Get(prefix+"my/lovely/key3", nil)
 	s.Require().NoError(err)
 	s.NotNil(pair)
+}
+
+func TestConsulService_SendsTheCurrentTokenWithEachRequest(t *testing.T) {
+	var mutex sync.Mutex
+	var sentTokens []string
+	consul := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mutex.Lock()
+		sentTokens = append(sentTokens, r.Header.Get("X-Consul-Token"))
+		mutex.Unlock()
+		w.Header().Set("X-Consul-Index", "1")
+		switch {
+		case r.URL.Path == "/v1/txn":
+			_, _ = w.Write([]byte(`{"Results":[],"Errors":null}`))
+		case r.Method == http.MethodDelete:
+			_, _ = w.Write([]byte(`true`))
+		default:
+			_, _ = w.Write([]byte(`[]`))
+		}
+	}))
+	t.Cleanup(consul.Close)
+	cfg := api.DefaultConfig()
+	cfg.Address = strings.TrimPrefix(consul.URL, "http://")
+	client, err := api.NewClient(cfg)
+	require.NoError(t, err)
+	currentToken := "first-token"
+	service := NewConsulService(client, namespace, func() string { return currentToken })
+	ctx := context.Background()
+
+	_, err = service.FindAll(ctx)
+	require.NoError(t, err)
+	_, err = service.FindByApplicationAndProfile(ctx, "app", "default")
+	require.NoError(t, err)
+	currentToken = "refreshed-token"
+	require.NoError(t, service.AddProperties(ctx, "app", "default", map[string]string{"key": "value"}))
+	require.NoError(t, service.DeleteProperties(ctx, "app", "default", []string{"key"}))
+	require.NoError(t, service.DeleteProfile(ctx, "app", "default"))
+
+	mutex.Lock()
+	defer mutex.Unlock()
+	assert.Equal(t, []string{"first-token", "first-token", "refreshed-token", "refreshed-token", "refreshed-token"}, sentTokens)
 }

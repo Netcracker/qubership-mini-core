@@ -35,7 +35,8 @@ releases in one namespace. The `config-server` Service selects only `core-legacy
 | --- | --- | --- |
 | Service | `config-server` | `config-server` |
 | Email secret | `config-server-email-secret` | `config-server-email-secret` |
-| Consul token secret | `config-server-consul-token`, required | `config-server-consul-token`, optional |
+| Consul token secret | `config-server-consul-token`, required | `config-server-consul-token`, optional; not mounted in mode `k8s` |
+| `ConsulACL` resource | None | Named after `SERVICE_NAME`, in mode `hybrid` or `k8s`; see [Consul access](#consul-access) |
 | Deployment, pods, container, ServiceAccount, HPA | `config-server` | `core-legacy-api` |
 | PodMonitor | `config-server-pod-monitor` | `core-legacy-api-pod-monitor` |
 | PodMonitor label `app.kubernetes.io/part-of` | `Cloud-Core` | `platform-monitoring` |
@@ -48,10 +49,28 @@ The logical database that config-server used in DBaaS is not used by `core-legac
 
 ## Consul access
 
-Properties are read and written with the static token from the `config-server-consul-token` secret, as in
-config-server. `CONSUL_AUTH_MODE` and the other `CONSUL_AUTH_*` parameters apply only to reading log levels. With the
-Kubernetes auth method, the service logs in with the `core-legacy-api` ServiceAccount, so a binding rule that matches
-the `config-server` ServiceAccount name does not apply to it.
+`CONSUL_AUTH_MODE` selects how the service gets the Consul ACL token it reads and writes properties with, and how it
+reads its log levels. When it is empty, `M2M_AUTH_MODE` selects it, and an empty `M2M_AUTH_MODE` means `legacy`.
+
+| Mode | Token for properties | `ConsulACL` resource |
+| --- | --- | --- |
+| `legacy` | The static token from the `config-server-consul-token` secret, as in config-server | Not created |
+| `hybrid` | The token from the secret when core-bootstrap issued one, otherwise a login | Created when the cluster serves the `ConsulACL` CRD of `netcracker.com/v1` |
+| `k8s` | A login; the secret is not mounted | Created when the cluster serves the CRD; without it the login fails |
+
+A login presents the projected ServiceAccount token with the audience `netcracker` to the Consul auth method
+`applications-k8s-m2m`. The chart projects only that audience, so leave `CONSUL_AUTH_AUDIENCE` and
+`CONSUL_AUTH_METHOD` empty. In `hybrid` the service chooses the token once, at startup.
+
+The `ConsulACL` resource, named after `SERVICE_NAME`, lets the `SERVICE_NAME` ServiceAccount write
+`config/<namespace>/`, read `logging/<namespace>/<SERVICE_NAME>`, and use the shared `_v2` policies of
+cloud-core-configuration. A `ConsulKV` resource of the same name declares `config/<namespace>/<SERVICE_NAME>/`,
+`data/<namespace>/<SERVICE_NAME>/`, and `logging/<namespace>/<SERVICE_NAME>/`; deleting the release keeps the keys
+under them. An existing binding rule for the `config-server` ServiceAccount does not grant the service access. Both
+resources go to the operator of the Consul namespace named in the host of `CONSUL_URL`. Until the operator applies
+the `ConsulACL`, the login fails and the service retries it; see [Health](#health).
+
+With Consul ACLs disabled, the service works without a token.
 
 The service reads its log levels only from `logging/<namespace>/core-legacy-api`. Overrides stored under
 `logging/<namespace>/config-server` and `logging/<namespace>/application` no longer apply to it. It does not read its
@@ -174,9 +193,11 @@ sum by (path) (rate(http_request_status{container="core-legacy-api"}[5m]))
 | `/readiness` | None | `{"status":...,"ConsulCheck":{"status":...}}`; `PROBLEM` returns 503, `WARNING` returns 200 |
 
 The chart points the readiness probe at `/readiness` and the liveness and startup probes at `/health`. When Consul
-becomes unreachable after startup, pods leave the Service and are not restarted. When Consul is unreachable at
-startup, the service exits and the pod restarts until Consul is reachable. A check that used config-server `/health`
-to see whether Consul is reachable has to call `/readiness` or `/health/readiness`.
+becomes unreachable after startup, pods leave the Service and are not restarted. At startup the service logs in to
+Consul and writes the default properties before it serves requests, and retries both every 5 seconds until they
+succeed. The startup probe restarts the pod when that takes longer than the probe allows: about a minute with the
+chart defaults, set by `PROBE_STARTUP_*`. A check that used config-server `/health` to see whether Consul is reachable
+has to call `/readiness` or `/health/readiness`.
 
 ## Tracing
 
