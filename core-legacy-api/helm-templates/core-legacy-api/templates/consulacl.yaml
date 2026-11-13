@@ -22,7 +22,7 @@ spec:
             {
                "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_logging_v2",
                "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_logging prefix policy",
-               "Rules":"key_prefix \"logging/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}\" { policy = \"read\" }"
+               "Rules":"key_prefix \"logging/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/\" { policy = \"read\" }"
             }
          ],
          "roles":[
