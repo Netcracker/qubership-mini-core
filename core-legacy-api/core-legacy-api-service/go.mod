@@ -9,7 +9,7 @@ require (
 	github.com/netcracker/qubership-core-lib-go-actuator-common/v2 v2.10.5
 	github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2 v2.9.5
 	github.com/netcracker/qubership-core-lib-go-rest-utils/v2 v2.9.1
-	github.com/netcracker/qubership-core-lib-go/v3 v3.15.0
+	github.com/netcracker/qubership-core-lib-go/v3 v3.15.4
 	github.com/stretchr/testify v1.12.1
 	github.com/swaggo/swag v1.16.4
 	github.com/testcontainers/testcontainers-go v0.44.0
@@ -71,7 +71,7 @@ require (
 	github.com/knadh/koanf/parsers/yaml v1.1.1 // indirect
 	github.com/knadh/koanf/providers/env/v2 v2.0.2 // indirect
 	github.com/knadh/koanf/providers/file v1.2.1 // indirect
-	github.com/knadh/koanf/v2 v2.3.8 // indirect
+	github.com/knadh/koanf/v2 v2.4.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
