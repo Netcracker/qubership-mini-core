@@ -54,7 +54,6 @@ metadata:
     deployer.cleanup/allow: "true"
 spec:
   operatorNamespace: {{ include "consulacl.operatorNamespace" . | quote }}
-  purgeOnDelete: true
   kv:
     - key: "config/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/"
     - key: "data/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/"

@@ -65,11 +65,10 @@ A login presents the projected ServiceAccount token with the audience `netcracke
 The `ConsulACL` resource, named after `SERVICE_NAME`, lets the `SERVICE_NAME` ServiceAccount write
 `config/<namespace>/`, read `logging/<namespace>/<SERVICE_NAME>`, and use the shared `_v2` policies of
 cloud-core-configuration. A `ConsulKV` resource of the same name declares `config/<namespace>/<SERVICE_NAME>/`,
-`data/<namespace>/<SERVICE_NAME>/`, and `logging/<namespace>/<SERVICE_NAME>/`; deleting the release deletes these
-trees. An existing binding rule for the
-`config-server` ServiceAccount does not grant the service access. Both resources go to the operator of the Consul
-namespace named in the host of `CONSUL_URL`. Until the operator applies the `ConsulACL`, the login fails and the
-service retries it; see [Health](#health).
+`data/<namespace>/<SERVICE_NAME>/`, and `logging/<namespace>/<SERVICE_NAME>/`; deleting the release keeps the keys
+under them. An existing binding rule for the `config-server` ServiceAccount does not grant the service access. Both
+resources go to the operator of the Consul namespace named in the host of `CONSUL_URL`. Until the operator applies
+the `ConsulACL`, the login fails and the service retries it; see [Health](#health).
 
 With Consul ACLs disabled, the service works without a token.
 
