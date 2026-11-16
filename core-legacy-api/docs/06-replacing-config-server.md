@@ -49,8 +49,9 @@ The logical database that config-server used in DBaaS is not used by `core-legac
 
 ## Consul access
 
-`CONSUL_AUTH_MODE` selects how the service gets the Consul ACL token it reads and writes properties with, and how it
-reads its log levels. When it is empty, `M2M_AUTH_MODE` selects it, and an empty `M2M_AUTH_MODE` means `legacy`.
+`M2M_AUTH_MODE` selects how the service gets the Consul ACL token it reads and writes properties with, and how it
+reads its log levels; an empty `M2M_AUTH_MODE` means `legacy`. `CONSUL_AUTH_MODE` overrides it for Consul alone and is
+meant only for testing.
 
 | Mode | Token for properties | `ConsulACL` resource |
 | --- | --- | --- |
