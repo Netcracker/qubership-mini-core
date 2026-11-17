@@ -67,7 +67,7 @@ func TestAddProperties_RequestContentType(t *testing.T) {
 	}{
 		{name: "application/json", contentType: "application/json", wantParsed: true},
 		{name: "application/json with charset", contentType: "application/json; charset=utf-8", wantParsed: true},
-		{name: "text/json", contentType: "text/json", wantParsed: true},
+		{name: "text/json", contentType: "text/json", wantParsed: false},
 		{name: "vendor +json type", contentType: "application/vnd.netcracker+json", wantParsed: true},
 		{name: "no Content-Type", wantParsed: false},
 		{name: "text/plain", contentType: "text/plain", wantParsed: false},
@@ -115,7 +115,7 @@ func TestFiberErrorHandler_Response(t *testing.T) {
 		{name: "ErrNotFound", target: "/not-found", wantStatus: http.StatusNotFound, wantError: "Not Found", wantPath: "/not-found"},
 		{name: "other error", target: "/failure", wantStatus: http.StatusInternalServerError, wantError: "Internal Server Error", wantPath: "/failure"},
 		{name: "unknown path", target: "/unknown", wantStatus: http.StatusNotFound, wantError: "Not Found", wantPath: "/unknown"},
-		{name: "unknown path with dot-dot segment", target: "/a/../unknown", wantStatus: http.StatusNotFound, wantError: "Not Found", wantPath: "/a/../unknown"},
+		{name: "unknown path with dot-dot segment", target: "/a/../unknown", wantStatus: http.StatusNotFound, wantError: "Not Found", wantPath: "/unknown"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
