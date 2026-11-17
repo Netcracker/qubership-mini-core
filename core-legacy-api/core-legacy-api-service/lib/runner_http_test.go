@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +13,7 @@ import (
 func TestProbeEndpointsContentType(t *testing.T) {
 	for _, path := range []string{"/health", "/readiness"} {
 		t.Run(path, func(t *testing.T) {
-			resp, err := newProbeTestApp(t).Test(httptest.NewRequest(http.MethodGet, path, nil), -1)
+			resp, err := newProbeTestApp(t).Test(httptest.NewRequest(http.MethodGet, path, nil), fiber.TestConfig{Timeout: 0})
 
 			require.NoError(t, err, "GET %s", path)
 			_ = resp.Body.Close()

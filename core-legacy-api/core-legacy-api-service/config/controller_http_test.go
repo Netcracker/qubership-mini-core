@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,9 +101,9 @@ func TestAddProperties_RequestContentType(t *testing.T) {
 
 func TestFiberErrorHandler_Response(t *testing.T) {
 	app := fiber.New(fiber.Config{ErrorHandler: FiberErrorHandler})
-	app.Get("/bad-request", func(c *fiber.Ctx) error { return ErrBadRequest })
-	app.Get("/not-found", func(c *fiber.Ctx) error { return ErrNotFound })
-	app.Get("/failure", func(c *fiber.Ctx) error { return io.ErrUnexpectedEOF })
+	app.Get("/bad-request", func(c fiber.Ctx) error { return ErrBadRequest })
+	app.Get("/not-found", func(c fiber.Ctx) error { return ErrNotFound })
+	app.Get("/failure", func(c fiber.Ctx) error { return io.ErrUnexpectedEOF })
 	tests := []struct {
 		name       string
 		target     string
@@ -141,7 +141,7 @@ func assertErrorResponse(t *testing.T, body string, wantStatus int, wantError, w
 
 func sendRequest(t *testing.T, app *fiber.App, req *http.Request) (int, string, string) {
 	t.Helper()
-	resp, err := app.Test(req, -1)
+	resp, err := app.Test(req, fiber.TestConfig{Timeout: 0})
 	require.NoError(t, err, "%s %s", req.Method, req.RequestURI)
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
