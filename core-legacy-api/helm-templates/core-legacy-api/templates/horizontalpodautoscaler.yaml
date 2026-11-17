@@ -1,4 +1,5 @@
-{{- if or (and (eq .Values.PAAS_PLATFORM "KUBERNETES") (ne (semver .Values.PAAS_VERSION | (semver "1.25").Compare) 1)) (and (eq .Values.PAAS_PLATFORM "OPENSHIFT") (ne (semver .Values.PAAS_VERSION | (semver "4.10").Compare) 1)) }} # k8s 1.25 or newer or os 4.10 or newer
+{{- $kubernetesVersion := default .Capabilities.KubeVersion.Version .Values.PAAS_VERSION }}
+{{- if or (and (eq .Values.PAAS_PLATFORM "KUBERNETES") (ne (semver $kubernetesVersion | (semver "1.25").Compare) 1)) (and (eq .Values.PAAS_PLATFORM "OPENSHIFT") (ne (semver .Values.PAAS_VERSION | (semver "4.10").Compare) 1)) }}
 apiVersion: autoscaling/v2
 {{- else }}
 apiVersion: autoscaling/v2beta2
