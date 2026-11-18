@@ -1,4 +1,5 @@
 {{- if include "consulacl.enabled" . }}
+{{- $compositeId := default .Values.ORIGIN_NAMESPACE .Values.BASELINE_ORIGIN }}
 apiVersion: netcracker.com/v1
 kind: ConsulACL
 metadata:
@@ -15,6 +16,31 @@ spec:
       {
          "policies":[
             {
+               "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_global_shared_v2",
+               "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_global_shared prefix policy",
+               "Rules":"key_prefix \"data/{{ .Values.NAMESPACE }}/\" { policy = \"write\" }"
+            },
+            {
+               "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_sessions_v2",
+               "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_sessions session policy",
+               "Rules":"session_prefix \"\" { policy = \"write\" }"
+            },
+            {
+               "Name":"{{ .Values.ORIGIN_NAMESPACE }}_{{ .Values.SERVICE_NAME }}_read_bluegreen_v2",
+               "Description":"{{ .Values.ORIGIN_NAMESPACE }}_{{ .Values.SERVICE_NAME }}_read_bluegreen prefix policy",
+               "Rules":"key_prefix \"bluegreen/\" { policy = \"read\" }"
+            },
+            {
+               "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_read_composite_v2",
+               "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_read_composite prefix policy",
+               "Rules":"key_prefix \"composite/{{ $compositeId }}/\" { policy = \"read\" }"
+            },
+            {
+               "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_write_global_v2",
+               "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_write_global prefix policy",
+               "Rules":"key_prefix \"config/{{ .Values.NAMESPACE }}/application/\" { policy = \"write\" }"
+            },
+            {
                "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_v2",
                "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }} prefix policy",
                "Rules":"key_prefix \"config/{{ .Values.NAMESPACE }}/\" { policy = \"write\" }"
@@ -30,16 +56,13 @@ spec:
                "Name":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_v2",
                "Description":"{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }} role",
                "policy_names":[
-                  "{{ .Values.NAMESPACE }}_global_shared_v2",
+                  "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_global_shared_v2",
                   "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_v2",
                   "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_logging_v2",
-                  "{{ .Values.ORIGIN_NAMESPACE }}_read_bluegreen_v2",
-{{- if .Values.PEER_NAMESPACE }}
-                  "{{ .Values.PEER_NAMESPACE }}_read_bluegreen_v2",
-{{- end }}
-                  "{{ .Values.NAMESPACE }}_read_composite_v2",
-                  "{{ .Values.NAMESPACE }}_write_global_v2",
-                  "{{ .Values.NAMESPACE }}_sessions_v2"
+                  "{{ .Values.ORIGIN_NAMESPACE }}_{{ .Values.SERVICE_NAME }}_read_bluegreen_v2",
+                  "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_read_composite_v2",
+                  "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_write_global_v2",
+                  "{{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}_sessions_v2"
                ]
             }
          ]

@@ -63,11 +63,12 @@ A login presents the projected ServiceAccount token with the audience `netcracke
 `applications-k8s-m2m`. The chart projects only that audience, so leave `CONSUL_AUTH_AUDIENCE` and
 `CONSUL_AUTH_METHOD` empty. In `hybrid` the service chooses the token once, at startup.
 
-The `ConsulACL` resource, named after `SERVICE_NAME`, lets the `SERVICE_NAME` ServiceAccount write
-`config/<namespace>/`, read `logging/<namespace>/<SERVICE_NAME>`, and use the shared `_v2` policies of
-cloud-core-configuration. A `ConsulKV` resource of the same name declares `config/<namespace>/<SERVICE_NAME>/`,
-`data/<namespace>/<SERVICE_NAME>/`, and `logging/<namespace>/<SERVICE_NAME>/`; deleting the release keeps the keys
-under them. An existing binding rule for the `config-server` ServiceAccount does not grant the service access. Both
+The `ConsulACL` resource, named after `SERVICE_NAME`, declares the role of the `SERVICE_NAME` ServiceAccount and
+its policies: write to `config/<namespace>/`, `data/<namespace>/`, and sessions; read of
+`logging/<namespace>/<SERVICE_NAME>/`, `bluegreen/`, and `composite/<composite>/`, where `<composite>` is
+`BASELINE_ORIGIN`, or `ORIGIN_NAMESPACE` when it is empty. A `ConsulKV` resource of the same name declares
+`config/<namespace>/<SERVICE_NAME>/`, `data/<namespace>/<SERVICE_NAME>/`, and `logging/<namespace>/<SERVICE_NAME>/`;
+deleting the release keeps the keys under them. An existing binding rule for the `config-server` ServiceAccount does not grant the service access. Both
 resources go to the operator of the Consul namespace named in the host of `CONSUL_URL`. Until the operator applies
 the `ConsulACL`, the login fails and the service retries it; see [Health](#health).
 
