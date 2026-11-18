@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p /reports /out
-public_module=/src/source/core-legacy-api/core-legacy-api-service
+public_module="$PWD/core-legacy-api-service"
 cd "$public_module"
 go mod download
 go test -v -count=1 -timeout=15m -coverpkg=./... -covermode=atomic \

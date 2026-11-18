@@ -12,7 +12,7 @@ ARG GOPROXY=https://proxy.golang.org,direct
 ARG GOSUMDB=sum.golang.org
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local GONOPROXY=none \
     GOMAXPROCS=2 GOMEMLIMIT=1GiB GOFLAGS=-p=2
-WORKDIR /src/source/core-legacy-api
+WORKDIR /src/${SOURCE_DIR}
 COPY ${SOURCE_DIR}/ ./
 RUN --mount=type=bind,target=/build-context \
     --mount=type=cache,target=/go/pkg/mod \
