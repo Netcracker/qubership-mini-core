@@ -1,4 +1,6 @@
 ---
+{{- $configServerExists := include "core-legacy-api.configServerExists" . }}
+
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -15,6 +17,10 @@ metadata:
     deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
   annotations:
     netcracker.cloud/start.stage: '0'
+  {{- if $configServerExists }}
+    helm.sh/hook: "pre-install,pre-upgrade"
+    helm.sh/hook-weight: "-100"
+  {{- end }}
 spec:
   replicas: {{ .Values.REPLICAS | default 1 }}
   revisionHistoryLimit: 3
@@ -56,7 +62,10 @@ spec:
     spec:
       serviceAccountName: '{{ .Values.SERVICE_NAME }}'
       volumes:
-{{ if and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
+        - name: client-credentials
+          secret:
+            secretName: '{{ .Values.SERVICE_NAME }}-client-credentials'
+{{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
         - name: tmp
           emptyDir: { }
         - name: sslcerts
@@ -64,6 +73,9 @@ spec:
         - name: cacerts
           emptyDir: { }
 {{ end }}
+        - name: "{{ .Values.SSL_SECRET }}"
+          secret:
+            secretName: "{{ .Values.SSL_SECRET }}"
         - name: projected-tokens
           projected:
             defaultMode: 292
@@ -75,27 +87,30 @@ spec:
         - name: topology
           configMap:
             name: topology
+            optional: true
         - name: pod-secrets
           projected:
             sources:
-            - secret:
-                      name: config-server-email-secret
-                      items:
-                        - key: username
-                          path: EMAIL_USER
-                        - key: password
-                          path: EMAIL_PASSWORD
-            - secret:
-                      name: config-server-consul-token
-                      optional: true
-                      items:
-                        - key: token
-                          path: CONSUL_TOKEN
+              - secret:
+                  name: config-server-email-secret
+                  items:
+                    - key: username
+                      path: EMAIL_USER
+                    - key: password
+                      path: EMAIL_PASSWORD
+              - secret:
+                  name: config-server-consul-token
+                  items:
+                    - key: token
+                      path: CONSUL_TOKEN
       containers:
         - name: '{{ .Values.SERVICE_NAME }}'
           image: '{{ .Values.IMAGE_REPOSITORY }}:{{ .Values.TAG }}'
           volumeMounts:
-{{ if and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
+            - name: client-credentials
+              mountPath: '/etc/secret'
+              readOnly: true
+{{ if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
             - name: tmp
               mountPath: /tmp
             - name: sslcerts
@@ -103,6 +118,9 @@ spec:
             - name: cacerts
               mountPath: /usr/local/share/ca-certificates
 {{ end }}
+            - name: "{{ .Values.SSL_SECRET }}"
+              mountPath: "/tmp/cert/{{ .Values.SSL_SECRET }}"
+              readOnly: true
             - name: pod-secrets
               mountPath: /etc/secrets/pod-secrets
               readOnly: true
@@ -119,8 +137,10 @@ spec:
               containerPort: 8080
               protocol: TCP
           env:
-            - name: M2M_AUTH_MODE
-              value: '{{ .Values.M2M_AUTH_MODE }}'
+            - name: KUBERNETES_M2M_ENABLED
+              value: '{{ .Values.KUBERNETES_M2M_ENABLED }}'
+            - name: CERTIFICATE_BUNDLE_{{ .Values.SSL_SECRET }}_MD5SUM
+              value: '{{ .Values.CERTIFICATE_BUNDLE_MD5SUM }}'
             - name: MICROSERVICE_NAME
               value: '{{ .Values.SERVICE_NAME }}'
             - name: CLOUD_NAMESPACE
@@ -135,8 +155,8 @@ spec:
               value: '{{ .Values.TRACING_ENABLED }}'
             - name: TRACING_HOST
               value: '{{ .Values.TRACING_HOST }}'
-            - name: TRACING_SAMPLER_RATELIMITING
-              value: '{{ .Values.TRACING_SAMPLER_RATELIMITING }}'
+            - name: TRACING_SAMPLER_PROBABILISTIC
+              value: '{{ .Values.TRACING_SAMPLER_PROBABILISTIC }}'
             - name: LOG_LEVEL
               value: '{{ .Values.LOG_LEVEL }}'
             - name: ALLOWED_HEADERS
@@ -165,14 +185,6 @@ spec:
               value: '{{ .Values.BASELINE_PROJ }}'
             - name: CONSUL_URL
               value: '{{ .Values.CONSUL_URL }}'
-            - name: CONSUL_AUTH_MODE
-              value: '{{ .Values.CONSUL_AUTH_MODE }}'
-            - name: CONSUL_AUTH_METHOD
-              value: '{{ .Values.CONSUL_AUTH_METHOD }}'
-            - name: CONSUL_AUTH_AUDIENCE
-              value: '{{ .Values.CONSUL_AUTH_AUDIENCE }}'
-            - name: CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL
-              value: '{{ .Values.CONSUL_AUTH_FALLBACK_RECHECK_INTERVAL }}'
             - name: HTTP_BUFFER_HEADER_MAX_SIZE
               value: '{{ .Values.HTTP_BUFFER_HEADER_MAX_SIZE }}'
           resources:
@@ -200,7 +212,7 @@ spec:
             timeoutSeconds: {{ ternary 5 .Values.PROBE_READINESS_TIMEOUT_SECONDS (lt (int .Values.PROBE_READINESS_TIMEOUT_SECONDS) 0) }}
             periodSeconds: {{ ternary 10 .Values.PROBE_READINESS_PERIOD_SECONDS (lt (int .Values.PROBE_READINESS_PERIOD_SECONDS) 0) }}
             successThreshold: {{ ternary 1 .Values.PROBE_READINESS_SUCCESS_THRESHOLD (lt (int .Values.PROBE_READINESS_SUCCESS_THRESHOLD) 0) }}
-            failureThreshold: {{ ternary 3 .Values.PROBE_READINESS_FAILURE_THRESHOLD (lt (int .Values.PROBE_READINESS_FAILURE_THRESHOLD) 0) }}
+            failureThreshold: {{ ternary 20 .Values.PROBE_READINESS_FAILURE_THRESHOLD (lt (int .Values.PROBE_READINESS_FAILURE_THRESHOLD) 0) }}
           startupProbe:
             httpGet:
               path: /health
@@ -216,7 +228,7 @@ spec:
             runAsUser: 10001
             runAsGroup: 10001
 {{ end }}
-            readOnlyRootFilesystem: {{ and .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED (eq .Values.PAAS_PLATFORM "KUBERNETES") }}
+            readOnlyRootFilesystem: {{ .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
