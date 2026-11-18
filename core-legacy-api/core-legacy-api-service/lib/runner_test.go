@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func newProbeTestApp(t *testing.T) *fiber.App {
 
 	app := fiber.New()
 	registerProbeEndpoints(app, healthService, readinessService)
-	app.Get("/:application/:profile", func(c *fiber.Ctx) error {
+	app.Get("/:application/:profile", func(c fiber.Ctx) error {
 		return c.JSON(map[string]interface{}{"name": c.Params("application")})
 	})
 	return app

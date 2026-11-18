@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 	"github.com/stretchr/testify/require"
 
@@ -1174,7 +1174,7 @@ func TestGetFiberParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app := fiber.New()
-			app.Get("/:name", func(c *fiber.Ctx) error {
+			app.Get("/:name", func(c fiber.Ctx) error {
 				result := GetFiberParam(c, tt.param)
 
 				assert.Equal(t, tt.expected, result)

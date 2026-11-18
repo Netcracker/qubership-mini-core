@@ -14,8 +14,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/utils/v2"
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
@@ -619,7 +619,7 @@ func forceSingleQuotes(node *yaml.Node) {
 	}
 }
 
-func GetFiberParam(fiberCtx *fiber.Ctx, paramName string) string {
+func GetFiberParam(fiberCtx fiber.Ctx, paramName string) string {
 	paramValue := fiberCtx.Params(paramName)
 	unescapedStr, err := url.PathUnescape(paramValue)
 	if err != nil {
