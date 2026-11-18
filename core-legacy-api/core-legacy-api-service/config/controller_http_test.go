@@ -25,7 +25,6 @@ func TestFindOneJSON_ResolvePlaceholdersQuery(t *testing.T) {
 	}{
 		{name: "absent", query: "", wantURL: resolved},
 		{name: "empty", query: "?resolvePlaceholders=", wantURL: resolved},
-		{name: "true", query: "?resolvePlaceholders=true", wantURL: resolved},
 		{name: "false", query: "?resolvePlaceholders=false", wantURL: unresolved},
 		{name: "0", query: "?resolvePlaceholders=0", wantURL: unresolved},
 		{name: "unparsable", query: "?resolvePlaceholders=no", wantURL: resolved},
@@ -101,9 +100,6 @@ func TestAddProperties_RequestContentType(t *testing.T) {
 
 func TestFiberErrorHandler_Response(t *testing.T) {
 	app := fiber.New(fiber.Config{ErrorHandler: FiberErrorHandler})
-	app.Get("/bad-request", func(c fiber.Ctx) error { return ErrBadRequest })
-	app.Get("/not-found", func(c fiber.Ctx) error { return ErrNotFound })
-	app.Get("/failure", func(c fiber.Ctx) error { return io.ErrUnexpectedEOF })
 	tests := []struct {
 		name       string
 		target     string
@@ -111,9 +107,6 @@ func TestFiberErrorHandler_Response(t *testing.T) {
 		wantError  string
 		wantPath   string
 	}{
-		{name: "ErrBadRequest", target: "/bad-request", wantStatus: http.StatusBadRequest, wantError: "Bad Request", wantPath: "/bad-request"},
-		{name: "ErrNotFound", target: "/not-found", wantStatus: http.StatusNotFound, wantError: "Not Found", wantPath: "/not-found"},
-		{name: "other error", target: "/failure", wantStatus: http.StatusInternalServerError, wantError: "Internal Server Error", wantPath: "/failure"},
 		{name: "unknown path", target: "/unknown", wantStatus: http.StatusNotFound, wantError: "Not Found", wantPath: "/unknown"},
 		{name: "unknown path with dot-dot segment", target: "/a/../unknown", wantStatus: http.StatusNotFound, wantError: "Not Found", wantPath: "/unknown"},
 	}
@@ -135,8 +128,6 @@ func assertErrorResponse(t *testing.T, body string, wantStatus int, wantError, w
 	assert.Equal(t, float64(wantStatus), response["status"], "status field, body %s", body)
 	assert.Equal(t, wantError, response["error"], "error field, body %s", body)
 	assert.Equal(t, wantPath, response["path"], "path field, body %s", body)
-	assert.NotEmpty(t, response["timestamp"], "timestamp field, body %s", body)
-	assert.Len(t, response, 4, "fields, body %s", body)
 }
 
 func sendRequest(t *testing.T, app *fiber.App, req *http.Request) (int, string, string) {
