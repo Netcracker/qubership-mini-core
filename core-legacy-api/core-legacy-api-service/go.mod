@@ -6,10 +6,10 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.16
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/api v1.35.0
-	github.com/netcracker/qubership-core-lib-go-actuator-common/v2 v2.12.5
-	github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2 v2.11.5
-	github.com/netcracker/qubership-core-lib-go-rest-utils/v2 v2.11.1
-	github.com/netcracker/qubership-core-lib-go/v3 v3.15.4
+	github.com/netcracker/qubership-core-lib-go-actuator-common/v2 v2.13.0
+	github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2 v2.12.0
+	github.com/netcracker/qubership-core-lib-go-rest-utils/v2 v2.12.0
+	github.com/netcracker/qubership-core-lib-go/v3 v3.16.0
 	github.com/stretchr/testify v1.12.1
 	github.com/swaggo/swag v1.16.6
 	github.com/testcontainers/testcontainers-go v0.45.0
@@ -51,7 +51,7 @@ require (
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/spec v0.20.4 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
-	github.com/go-pkgz/expirable-cache/v3 v3.1.1 // indirect
+	github.com/go-pkgz/expirable-cache/v3 v3.2.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gofiber/adaptor/v2 v2.2.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
@@ -91,7 +91,7 @@ require (
 	github.com/moby/term v0.5.2 // indirect
 	github.com/molecule-man/go-brrr v1.3.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/netcracker/qubership-core-lib-go-error-handling/v3 v3.7.6 // indirect
+	github.com/netcracker/qubership-core-lib-go-error-handling/v3 v3.8.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
