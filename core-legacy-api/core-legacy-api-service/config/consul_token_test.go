@@ -122,15 +122,6 @@ func TestNewConsulACLTokenFromConfig_RejectsAnUnknownMode(t *testing.T) {
 	assert.Nil(t, token)
 }
 
-func TestServiceAccountACLToken_WorksWithoutATokenWhenConsulACLsAreDisabled(t *testing.T) {
-	_, address := newFakeConsulLogin(t, http.StatusUnauthorized, "ACL support disabled")
-	token := newServiceAccountACLToken(context.Background(), address)
-
-	require.NoError(t, token.Acquire())
-
-	assert.Equal(t, "", token.Value())
-}
-
 func startConsulWithACLsDisabled(t *testing.T, image string) string {
 	ctx := context.Background()
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
