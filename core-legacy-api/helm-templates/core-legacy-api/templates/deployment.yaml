@@ -64,6 +64,9 @@ spec:
         - name: cacerts
           emptyDir: { }
 {{ end }}
+        - name: tenants
+          configMap:
+            name: tenants
         - name: projected-tokens
           projected:
             defaultMode: 292
@@ -103,6 +106,9 @@ spec:
             - name: cacerts
               mountPath: /usr/local/share/ca-certificates
 {{ end }}
+            - name: tenants
+              mountPath: /etc/tenants
+              readOnly: true
             - name: pod-secrets
               mountPath: /etc/secrets/pod-secrets
               readOnly: true

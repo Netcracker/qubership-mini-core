@@ -20,6 +20,7 @@ import (
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/docs"
+	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/tenantmanager"
 )
 
 var (
@@ -85,6 +86,14 @@ func RunService() {
 
 	readinessService.AddCheck("ConsulCheck", consulService.HealthCheck)
 	registerProbeEndpoints(app, healthService, readinessService)
+
+	tenantManager := tenantmanager.NewHandler(
+		configloader.GetOrDefaultString("tenants.config.path", "/etc/tenants/tenants.json"),
+	)
+	tenantManagerAPI := app.Group("/api/v4/tenant-manager")
+	tenantManagerAPI.Get("/manage/tenants", tenantManager.List)
+	tenantManagerAPI.Get("/manage/tenants/:id", tenantManager.Get)
+	tenantManagerAPI.Get("/registration/tenants", tenantManager.FindByDns)
 
 	configController := config.NewConfigPropertiesController(consulService)
 	// swagger

@@ -21,4 +21,24 @@ spec:
   {{ if  eq .Values.K8S_SERVICE_TYPE "HEADLESS" }}
   clusterIP: None
   {{ end }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: 'tenant-manager'
+  labels:
+    name: 'tenant-manager'
+    app.kubernetes.io/name: 'tenant-manager'
+    app.kubernetes.io/part-of: 'Cloud-Core'
+    app.kubernetes.io/managed-by: 'saasDeployer'
+    deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
+  annotations:
+    netcracker.cloud/start.stage: '0'
+spec:
+  ports:
+    -   name: web
+        port: 8080
+        targetPort: 8080
+  selector:
+    name: '{{ .Values.SERVICE_NAME }}'
 
