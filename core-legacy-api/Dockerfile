@@ -4,7 +4,7 @@ COPY core-legacy-api-service/ .
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o core-legacy-api ./cmd/core-legacy-api-service
 
-FROM ghcr.io/netcracker/qubership-core-base:alpine-2.5.15@sha256:a3af3751d9187ce7f8ffd67a5aa8465fee78056c79f964bfa7727ea00da681da AS run
+FROM ghcr.io/netcracker/qubership-core-base:alpine-2.6.1@sha256:7be670fc57c243195c63597106413e1b0365381c2d186a71cb6d12fcffc2278b AS run
 COPY --chown=10001:0 --chmod=555 --from=build /app/core-legacy-api /app/core-legacy-api
 COPY --chown=10001:0 --chmod=444 --from=build /app/application.yaml /app/
 COPY --chown=10001:0 --chmod=444 --from=build app/docs/swagger.json /app/
