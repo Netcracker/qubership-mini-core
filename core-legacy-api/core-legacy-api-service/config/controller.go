@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
@@ -60,6 +59,7 @@ func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 // @Param label path string true "label"
 // @Produce application/json
 // @Success 200 {object} model.Environment
+// @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /{application}/{profile} [get]
 // @Router /{application}/{profile}/{label} [get]
@@ -67,8 +67,12 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 
 	application := replaceSlashPlaceholder(GetFiberParam(c, "application"))
-	activeProfiles := strings.Split(GetFiberParam(c, "profile"), ",")
+	profiles := GetFiberParam(c, "profile")
 	label := optional(replaceSlashPlaceholder(GetFiberParam(c, "label")), "")
+	activeProfiles, err := parseProfiles(profiles)
+	if err != nil {
+		return LogError(ctrl.logger, ctx, "invalid profiles for application=%s: %w", application, err)
+	}
 
 	ctrl.logger.DebugC(ctx, "Finding config for application=%s, profiles=%s", application, activeProfiles)
 
@@ -79,7 +83,7 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 
 	environment := buildEnvironment(
 		application,
-		activeProfiles,
+		[]string{profiles},
 		label,
 		properties,
 	)
@@ -172,7 +176,10 @@ func (ctrl *ConfigController) loadRequestedProperties(c *fiber.Ctx, format strin
 		return requestedProperties{}, LogError(ctrl.logger, ctx, "invalid name and profiles %q: %w", nameAndProfiles, ErrNotFound)
 	}
 	application = replaceSlashPlaceholder(application)
-	activeProfiles := strings.Split(profiles, ",")
+	activeProfiles, err := parseProfiles(profiles)
+	if err != nil {
+		return requestedProperties{}, LogError(ctrl.logger, ctx, "invalid profiles for application=%s: %w", application, err)
+	}
 	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
 
 	ctrl.logger.DebugC(ctx, "Finding %s config for application=%s, profiles=%s", format, application, activeProfiles)

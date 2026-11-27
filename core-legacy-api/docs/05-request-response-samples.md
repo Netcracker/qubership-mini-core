@@ -130,6 +130,10 @@ GET /applications HTTP/1.1
 ## 3.2. Configuration Retrieval
 
 
+### Profiles
+
+`{profile}` is one profile or a comma-separated list without spaces, such as `dev,prod`. Properties of a later profile override those of an earlier one. Each profile starts and ends with a letter or digit, contains only letters, digits, and `-_.+@`, and has no `..`. A list that breaks this rule, such as `dev, prod` or `dev,,prod`, returns 400 in every format. The `profiles` field of the environment JSON holds the list as one element, as requested: `["dev,prod"]`.
+
 ### Query parameters
 
 | Parameter | Type | Default | Description |
