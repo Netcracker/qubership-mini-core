@@ -12,7 +12,7 @@ import (
 	config "github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/config/mock-service"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/mock/gomock"

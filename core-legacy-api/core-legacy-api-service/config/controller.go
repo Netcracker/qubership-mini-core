@@ -9,7 +9,7 @@ import (
 	"github.com/netcracker/qubership-core-lib-go/v3/logging"
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ConfigService interface {
@@ -37,8 +37,8 @@ func NewConfigPropertiesController(configService ConfigService) *ConfigControlle
 // @Success 200 {array} model.ApplicationWithProfiles "Returned successfully list of configured applications with their profiles"
 // @Failure 500 {object} map[string]string
 // @Router /applications [get]
-func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
-	ctx := c.UserContext()
+func (ctrl *ConfigController) GetApplicationsAndProfiles(c fiber.Ctx) error {
+	ctx := c.Context()
 	ctrl.logger.DebugC(ctx, "Getting applications")
 
 	configProfiles, err := ctrl.sv.FindAll(ctx)
@@ -63,8 +63,8 @@ func (ctrl *ConfigController) GetApplicationsAndProfiles(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]string
 // @Router /{application}/{profile} [get]
 // @Router /{application}/{profile}/{label} [get]
-func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
-	ctx := c.UserContext()
+func (ctrl *ConfigController) FindOne(c fiber.Ctx) error {
+	ctx := c.Context()
 
 	application := replaceSlashPlaceholder(GetFiberParam(c, "application"))
 	profiles := GetFiberParam(c, "profile")
@@ -102,7 +102,7 @@ func (ctrl *ConfigController) FindOne(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]string
 // @Router /{name}-{profiles}.json [get]
 // @Router /{label}/{name}-{profiles}.json [get]
-func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
+func (ctrl *ConfigController) FindOneJSON(c fiber.Ctx) error {
 	req, err := ctrl.loadRequestedProperties(c, "JSON")
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func (ctrl *ConfigController) FindOneJSON(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]string
 // @Router /{name}-{profiles}.properties [get]
 // @Router /{label}/{name}-{profiles}.properties [get]
-func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
+func (ctrl *ConfigController) FindOneProperties(c fiber.Ctx) error {
 	req, err := ctrl.loadRequestedProperties(c, "properties-format")
 	if err != nil {
 		return err
@@ -145,7 +145,7 @@ func (ctrl *ConfigController) FindOneProperties(c *fiber.Ctx) error {
 // @Router /{label}/{name}-{profiles}.yml [get]
 // @Router /{name}-{profiles}.yaml [get]
 // @Router /{label}/{name}-{profiles}.yaml [get]
-func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
+func (ctrl *ConfigController) FindOneYaml(c fiber.Ctx) error {
 	req, err := ctrl.loadRequestedProperties(c, "YAML")
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func (ctrl *ConfigController) FindOneYaml(c *fiber.Ctx) error {
 
 	yamlBytes, err := marshalWithSingleQuotes(nested)
 	if err != nil {
-		return LogError(ctrl.logger, c.UserContext(), "failed to marshal YAML for application=%s profiles=%v: %w", req.application, req.profiles, err)
+		return LogError(ctrl.logger, c.Context(), "failed to marshal YAML for application=%s profiles=%v: %w", req.application, req.profiles, err)
 	}
 	return RespondWithBytes(c, http.StatusOK, yamlBytes)
 }
@@ -168,8 +168,8 @@ type requestedProperties struct {
 
 // loadRequestedProperties loads the merged properties for the nameAndProfiles path parameter
 // and resolves placeholders unless the request sets resolvePlaceholders=false.
-func (ctrl *ConfigController) loadRequestedProperties(c *fiber.Ctx, format string) (requestedProperties, error) {
-	ctx := c.UserContext()
+func (ctrl *ConfigController) loadRequestedProperties(c fiber.Ctx, format string) (requestedProperties, error) {
+	ctx := c.Context()
 	nameAndProfiles := GetFiberParam(c, "nameAndProfiles")
 	application, profiles, err := splitApplicationAndProfiles(nameAndProfiles)
 	if err != nil {
@@ -180,7 +180,7 @@ func (ctrl *ConfigController) loadRequestedProperties(c *fiber.Ctx, format strin
 	if err != nil {
 		return requestedProperties{}, LogError(ctrl.logger, ctx, "invalid profiles for application=%s: %w", application, err)
 	}
-	resolvePlaceholders := c.QueryBool("resolvePlaceholders", true)
+	resolvePlaceholders := fiber.Query[bool](c, "resolvePlaceholders", true)
 
 	ctrl.logger.DebugC(ctx, "Finding %s config for application=%s, profiles=%s", format, application, activeProfiles)
 
@@ -241,15 +241,15 @@ func (ctrl *ConfigController) loadMergedProperties(
 // @Failure 500 {object} map[string]string
 // @Router /{application}/{profile} [post]
 // @Router /{application}/{profile} [put]
-func (ctrl *ConfigController) AddProperties(c *fiber.Ctx) error {
-	ctx := c.UserContext()
+func (ctrl *ConfigController) AddProperties(c fiber.Ctx) error {
+	ctx := c.Context()
 
 	application := GetFiberParam(c, "application")
 	profile := GetFiberParam(c, "profile")
 
 	rawProperties := make(map[string]json.RawMessage)
 	ctrl.logger.InfoC(ctx, "Adding properties for application=%s, profile=%s", application, profile)
-	err := c.BodyParser(&rawProperties)
+	err := c.Bind().Body(&rawProperties)
 	if err != nil {
 		return LogError(ctrl.logger, ctx, "failed to parse request body for application=%s profile=%s: %w", application, profile, ErrBadRequest)
 	}
@@ -281,14 +281,14 @@ func (ctrl *ConfigController) AddProperties(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /{application}/{profile}/properties-delete [post]
-func (ctrl *ConfigController) DeleteProperties(c *fiber.Ctx) error {
-	ctx := c.UserContext()
+func (ctrl *ConfigController) DeleteProperties(c fiber.Ctx) error {
+	ctx := c.Context()
 
 	application := GetFiberParam(c, "application")
 	profile := GetFiberParam(c, "profile")
 	var properties []string
 	if len(c.Body()) > 0 {
-		if err := c.BodyParser(&properties); err != nil {
+		if err := c.Bind().Body(&properties); err != nil {
 			return LogError(ctrl.logger, ctx, "failed to parse request body for application=%s profile=%s: %w", application, profile, ErrBadRequest)
 		}
 	}

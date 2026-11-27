@@ -7,11 +7,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/health"
 	"github.com/netcracker/qubership-core-lib-go-actuator-common/v2/tracing"
-	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2"
-	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2/server"
+	fiberserver "github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v3"
+	"github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v3/server"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/consul-propertysource"
 	"github.com/netcracker/qubership-core-lib-go-rest-utils/v2/podsecrets-propertysource"
 	"github.com/netcracker/qubership-core-lib-go/v3/configloader"
@@ -59,7 +59,6 @@ func RunService() {
 	}
 
 	app, err := fiberserver.New(fiber.Config{
-		Network:      fiber.NetworkTCP,
 		ErrorHandler: config.FiberErrorHandler,
 	}).
 		WithPrometheus("/prometheus").
@@ -71,15 +70,15 @@ func RunService() {
 		logger.Errorf("Error while create app because: %s", err.Error())
 		panic(err)
 	}
-	app.Use(func(c *fiber.Ctx) error {
+	app.Use(func(c fiber.Ctx) error {
 		requestHeaders := map[string]interface{}{}
 		for key, value := range c.Request().Header.All() {
 			requestHeaders[string(key)] = string(value)
 		}
-		var ctx = c.UserContext()
+		var ctx = c.Context()
 		ctx = ctxmanager.InitContext(ctx, requestHeaders)
 
-		c.SetUserContext(ctx)
+		c.SetContext(ctx)
 		return c.Next()
 	})
 
@@ -88,7 +87,7 @@ func RunService() {
 
 	configController := config.NewConfigPropertiesController(consulService)
 	// swagger
-	app.Get("/swagger-ui/swagger.json", func(ctx *fiber.Ctx) error {
+	app.Get("/swagger-ui/swagger.json", func(ctx fiber.Ctx) error {
 		ctx.Set("Content-Type", "application/json")
 		return ctx.Status(http.StatusOK).SendString(docs.SwaggerInfo.ReadDoc())
 	})
@@ -119,7 +118,7 @@ func RunService() {
 
 	registerShutdownHooks()
 
-	server.StartServer(app, "http.server.bind")
+	server.StartServer(app, "http.server.bind", fiber.ListenConfig{ListenerNetwork: fiber.NetworkTCP})
 }
 
 func registerShutdownHooks() {
@@ -150,11 +149,11 @@ func registerProbeEndpoints(app *fiber.App, healthService, readinessService heal
 
 func createProbeEndpoint(service health.HealthService) fiber.Handler {
 	service.Start()
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		result := service.GetHealth()
 		if result == nil {
-			return c.Status(http.StatusServiceUnavailable).JSON(map[string]interface{}{"status": "DOWN"})
+			return c.Status(http.StatusServiceUnavailable).JSON(map[string]interface{}{"status": "DOWN"}, fiber.MIMEApplicationJSON)
 		}
-		return c.Status(result.GetStatusCode()).JSON(result.GetHealthMap())
+		return c.Status(result.GetStatusCode()).JSON(result.GetHealthMap(), fiber.MIMEApplicationJSON)
 	}
 }
