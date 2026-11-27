@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/swaggo/swag v1.16.6
 	github.com/testcontainers/testcontainers-go v0.45.0
-	github.com/valyala/fasthttp v1.79.0
+	github.com/valyala/fasthttp v1.80.0
 	go.uber.org/mock v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
