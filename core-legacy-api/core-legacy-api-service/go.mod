@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/consul/api v1.35.0
 	github.com/netcracker/qubership-core-lib-go-actuator-common/v2 v2.13.0
 	github.com/netcracker/qubership-core-lib-go-fiber-server-utils/v2 v2.12.0
-	github.com/netcracker/qubership-core-lib-go-rest-utils/v2 v2.12.0
+	github.com/netcracker/qubership-core-lib-go-rest-utils/v2 v2.12.1-0.20261127110133-31cf2681e66c
 	github.com/netcracker/qubership-core-lib-go/v3 v3.16.0
 	github.com/stretchr/testify v1.12.1
 	github.com/swaggo/swag v1.16.6

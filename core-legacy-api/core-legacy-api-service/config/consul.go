@@ -25,7 +25,6 @@ const txnMaxReqLen = 512 * 1024
 
 func NewConsulClientFromConfig() (*api.Client, error) {
 	consulURL := configloader.GetOrDefaultString("consul.url", "")
-	consulToken := configloader.GetOrDefaultString("consul.token", "")
 	if consulURL == "" {
 		return nil, fmt.Errorf("consul.url is empty")
 	}
@@ -38,7 +37,6 @@ func NewConsulClientFromConfig() (*api.Client, error) {
 	conf := api.DefaultConfig()
 	conf.Address = u.Host
 	conf.Scheme = u.Scheme
-	conf.Token = consulToken
 
 	consulClient, err := api.NewClient(conf)
 	if err != nil {
@@ -48,12 +46,12 @@ func NewConsulClientFromConfig() (*api.Client, error) {
 	return consulClient, nil
 }
 
-func NewConsulService(client *api.Client, namespace string) *ConsulService {
+func NewConsulService(client *api.Client, namespace string, token func() string) *ConsulService {
 
-	return &ConsulService{client, namespace, logging.GetLogger("ConsulService")}
+	return &ConsulService{client, namespace, token, logging.GetLogger("ConsulService")}
 }
 
-func NewConsulServiceFromConfig() *ConsulService {
+func NewConsulServiceFromConfig(token func() string) *ConsulService {
 	client, err := NewConsulClientFromConfig()
 	if err != nil {
 		logger.Errorf("Couldn't create Consul client: %v", err)
@@ -61,15 +59,7 @@ func NewConsulServiceFromConfig() *ConsulService {
 	}
 
 	namespace := configloader.GetOrDefaultString("microservice.namespace", "")
-	return NewConsulService(client, namespace)
-}
-
-func InitConsulConfiguration(ctx context.Context) (*ConsulService, error) {
-	service := NewConsulServiceFromConfig()
-	if err := InitializeDefaultProperties(ctx, service); err != nil {
-		return nil, err
-	}
-	return service, nil
+	return NewConsulService(client, namespace, token)
 }
 
 func (s *ConsulService) HealthCheck() health.Status {
@@ -102,7 +92,7 @@ func (s *ConsulService) AddProperties(ctx context.Context, application string, p
 
 func (s *ConsulService) performTransaction(ctx context.Context, operation api.TxnOps) error {
 	s.logger.InfoC(ctx, "Executing Consul transaction with %d operations", len(operation))
-	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
+	queryOptions := (&api.QueryOptions{Token: s.token()}).WithContext(ctx)
 	ok, resp, _, err := s.consul.Txn().Txn(operation, queryOptions) //TODO: transaction?
 	if err != nil {
 		if ctx.Err() != nil {
@@ -128,7 +118,7 @@ func (s *ConsulService) performTransaction(ctx context.Context, operation api.Tx
 
 func (s *ConsulService) FindAll(ctx context.Context) ([]model.ConfigProfile, error) {
 	prefix := consulConfigPrefix + "/" + s.namespace + "/"
-	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
+	queryOptions := (&api.QueryOptions{Token: s.token()}).WithContext(ctx)
 	// Get all KV pairs under the prefix.
 	pairs, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
@@ -151,7 +141,7 @@ func (s *ConsulService) FindByApplicationAndProfile(
 	profileName string,
 ) (model.ConfigProfile, error) {
 	prefix := formatKeyPrefix(s.namespace, appName, profileName)
-	queryOptions := (&api.QueryOptions{}).WithContext(ctx)
+	queryOptions := (&api.QueryOptions{Token: s.token()}).WithContext(ctx)
 	properties, _, err := s.consul.KV().List(prefix, queryOptions)
 	if err != nil {
 		return model.ConfigProfile{}, fmt.Errorf("failed to list KV pairs for application=%s profile=%s: %w", appName, profileName, err)
@@ -167,7 +157,7 @@ func (s *ConsulService) FindByApplicationAndProfile(
 
 func (s *ConsulService) DeleteProfile(ctx context.Context, application string, profile string) error {
 	prefix := formatKeyPrefix(s.namespace, application, profile)
-	writeOptions := (&api.WriteOptions{}).WithContext(ctx)
+	writeOptions := (&api.WriteOptions{Token: s.token()}).WithContext(ctx)
 	_, err := s.consul.KV().DeleteTree(prefix, writeOptions)
 	if err != nil {
 		return fmt.Errorf("failed to delete profile tree for application=%s profile=%s: %w", application, profile, err)
@@ -196,5 +186,6 @@ func (s *ConsulService) DeleteProperties(ctx context.Context, application string
 type ConsulService struct {
 	consul    *api.Client
 	namespace string
+	token     func() string
 	logger    logging.Logger
 }
