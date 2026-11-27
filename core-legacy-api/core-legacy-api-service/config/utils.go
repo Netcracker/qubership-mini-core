@@ -20,7 +20,7 @@ import (
 	"github.com/netcracker/qubership-mini-core/core-legacy-api/core-legacy-api-service/model"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/consul/api"
+	"github.com/hashicorp/consul/api/v2"
 	"gopkg.in/yaml.v3"
 )
 
