@@ -43,7 +43,7 @@ func RunService() {
 
 	consulService, err := config.InitConsulConfiguration(ctx)
 	if err != nil {
-		logger.Errorf("Couldn't initialize default properties because: %s", err.Error())
+		logger.Errorf("Couldn't initialize Consul: %s", err.Error())
 		panic(err)
 	}
 
