@@ -1,4 +1,4 @@
-{{- if include "consulacl.enabled" . }}
+{{- if include "coretpl.consulacl.enabled" . }}
 {{- $compositeId := default .Values.ORIGIN_NAMESPACE .Values.BASELINE_ORIGIN }}
 apiVersion: netcracker.com/v1
 kind: ConsulACL
@@ -8,7 +8,7 @@ metadata:
   labels:
     deployer.cleanup/allow: "true"
 spec:
-  operatorNamespace: {{ include "consulacl.operatorNamespace" . | quote }}
+  operatorNamespace: {{ include "coretpl.consulacl.operatorNamespace" . | quote }}
   acl:
     name: {{ .Values.NAMESPACE }}_{{ .Values.SERVICE_NAME }}
     explicitName: true
@@ -76,7 +76,7 @@ metadata:
   labels:
     deployer.cleanup/allow: "true"
 spec:
-  operatorNamespace: {{ include "consulacl.operatorNamespace" . | quote }}
+  operatorNamespace: {{ include "coretpl.consulacl.operatorNamespace" . | quote }}
   kv:
     - key: "config/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/"
     - key: "data/{{ .Values.NAMESPACE }}/{{ .Values.SERVICE_NAME }}/"
