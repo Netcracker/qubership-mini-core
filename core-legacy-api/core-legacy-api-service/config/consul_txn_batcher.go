@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 
-	"github.com/hashicorp/consul/api"
+	"github.com/hashicorp/consul/api/v2"
 )
 
 // txnBatcher accumulates Consul KV transaction operations and flushes them
