@@ -1,0 +1,12 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: 'tenants'
+  labels:
+    app.kubernetes.io/part-of: 'Cloud-Core'
+    app.kubernetes.io/managed-by: 'saasDeployer'
+    deployment.netcracker.com/sessionId: '{{ .Values.DEPLOYMENT_SESSION_ID }}'
+data:
+  tenants.json: |
+    [{"externalId": null, "name": "default", "domainName": null, "namespace": "{{ .Values.NAMESPACE }}"}]
